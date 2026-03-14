@@ -34,4 +34,5 @@ Formação & Certificações
 * **Certificação:** Aprovada no Exame de Suficiência do **CRC**.
 
 
-📫 **Conecte-se comigo:** www.linkedin.com/in/nayarabelo
+**Site Oficial:** [www.veritasyn.com](http://www.veritasyn.com)
+**Conecte-se comigo:** www.linkedin.com/in/nayarabelo
