@@ -17,6 +17,8 @@ Framework de análise financeira construído em Python puro — sem bibliotecas 
 - **A Solução:** Framework com Z-Score, Altman Z-Score, IQR, Regressão OLS e Score de risco composto — tudo implementado do zero.
 - **Tecnologias:** Python puro, CVM / DFP, Chart.js, GitHub Pages.
 
+Acesse o dashboard em > https://belonayara.github.io/Portfolio-Data-Finance/raizen
+
 ---
 
 ### [Inteligência Financeira e Auditoria Digital (TCC)](./Auditoria_Bancaria)
@@ -34,6 +36,8 @@ Integração de indicadores macroeconômicos com dados financeiros corporativos.
 - **O Problema:** Necessidade de entender como variáveis externas (Inflação, Juros, Câmbio) impactam o bottom-line.
 - **A Solução:** Dashboards analíticos e modelagem em **Python e R** para suporte à análise estratégica.
 - **Tecnologias:** Python, R, Matplotlib / Seaborn, Análise de Séries Temporais.
+
+Acesse o dashboard itau em > https://belonayara.github.io/Portfolio-Data-Finance/itau
 
 ---
 
