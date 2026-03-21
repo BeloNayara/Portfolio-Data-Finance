@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Análise Financeira — Itaú Unibanco 2019–2023</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+  :root {
+    --bg:#0a0e17; --surface:#111827; --border:#1f2d45;
+    --accent:#f97316; --accent2:#3b82f6; --accent3:#10b981;
+    --neg:#ef4444; --text:#e2e8f0; --muted:#64748b; --gold:#f59e0b;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; font-size:13px; }
+  .hero { background:linear-gradient(135deg,#0d1b2e,#0a0e17); border-bottom:1px solid var(--border); padding:48px 40px 36px; position:relative; overflow:hidden; }
+  .hero::before { content:''; position:absolute; top:-80px; right:-80px; width:360px; height:360px; background:radial-gradient(circle,rgba(249,115,22,.18),transparent 70%); }
+  .hero-tag { font-size:10px; letter-spacing:.18em; color:var(--accent); text-transform:uppercase; margin-bottom:10px; }
+  .hero h1 { font-family:'Syne',sans-serif; font-size:clamp(28px,4vw,48px); font-weight:800; color:#fff; }
+  .hero h1 span { color:var(--accent); }
+  .hero-sub { margin-top:10px; color:var(--muted); font-size:12px; }
+  .hero-meta { margin-top:20px; display:flex; gap:16px; flex-wrap:wrap; }
+  .meta-pill { background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:6px; padding:6px 14px; font-size:11px; color:var(--muted); }
+  .meta-pill strong { color:var(--text); }
+  .tabs { display:flex; background:var(--surface); border-bottom:1px solid var(--border); padding:0 40px; overflow-x:auto; }
+  .tab-btn { padding:14px 22px; background:none; border:none; border-bottom:2px solid transparent; color:var(--muted); font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; white-space:nowrap; transition:all .2s; }
+  .tab-btn:hover { color:var(--text); }
+  .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .container { padding:32px 40px; max-width:1400px; margin:0 auto; }
+  .section { display:none; }
+  .section.active { display:block; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:36px; }
+  .kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 22px; position:relative; overflow:hidden; }
+  .kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .kpi-card.orange::before { background:var(--accent); }
+  .kpi-card.blue::before   { background:var(--accent2); }
+  .kpi-card.green::before  { background:var(--accent3); }
+  .kpi-card.gold::before   { background:var(--gold); }
+  .kpi-label { font-size:10px; letter-spacing:.12em; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
+  .kpi-value { font-family:'Syne',sans-serif; font-size:22px; font-weight:700; color:#fff; }
+  .kpi-change { margin-top:6px; font-size:11px; }
+  .kpi-change.pos { color:var(--accent3); }
+  .kpi-change.neg { color:var(--neg); }
+  .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(440px,1fr)); gap:20px; margin-bottom:32px; }
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; }
+  .chart-card h3 { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; margin-bottom:20px; }
+  .chart-card canvas { max-height:260px; }
+  .table-block { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .table-block h3 { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; margin-bottom:16px; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { background:rgba(255,255,255,.04); padding:10px 14px; text-align:right; font-size:10px; letter-spacing:.1em; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th:first-child { text-align:left; }
+  td { padding:9px 14px; text-align:right; border-bottom:1px solid rgba(31,45,69,.5); }
+  td.label-cell { text-align:left; color:var(--muted); font-size:11px; }
+  tr:hover td { background:rgba(255,255,255,.02); }
+  td.pos { color:var(--accent3); }
+  td.neg { color:var(--neg); }
+  .section-title { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; color:#fff; margin-bottom:8px; }
+  .section-desc { color:var(--muted); font-size:11px; margin-bottom:28px; }
+  footer { text-align:center; padding:32px; color:var(--muted); font-size:10px; border-top:1px solid var(--border); margin-top:40px; }
+  .analise-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(580px,1fr)); gap:20px; margin-bottom:24px; }
+  .analise-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:28px; position:relative; overflow:hidden; }
+  .analise-card::before { content:''; position:absolute; top:0; left:0; bottom:0; width:3px; }
+  .analise-card.verde::before  { background:var(--accent3); }
+  .analise-card.laranja::before { background:var(--accent); }
+  .analise-card.azul::before   { background:var(--accent2); }
+  .analise-card.vermelho::before { background:var(--neg); }
+  .analise-card.ouro::before   { background:var(--gold); }
+  .analise-num { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; margin-bottom:8px; }
+  .analise-card.verde  .analise-num { color:var(--accent3); }
+  .analise-card.laranja .analise-num { color:var(--accent); }
+  .analise-card.azul   .analise-num { color:var(--accent2); }
+  .analise-card.vermelho .analise-num { color:var(--neg); }
+  .analise-card.ouro   .analise-num { color:var(--gold); }
+  .analise-pergunta { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:#fff; margin-bottom:16px; line-height:1.4; }
+  .analise-body { color:#94a3b8; font-size:12px; line-height:1.9; }
+  .analise-body strong { color:var(--text); }
+  .analise-metricas { display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }
+  .metrica-pill { background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:11px; }
+  .metrica-pill .ml { color:var(--muted); display:block; font-size:10px; margin-bottom:2px; }
+  .metrica-pill .mv { color:#fff; font-weight:600; }
+  .veredicto { margin-top:16px; padding:12px 16px; border-radius:8px; font-size:12px; font-weight:500; }
+  .veredicto.pos { background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.25); color:var(--accent3); }
+  .veredicto.neg { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.25); color:var(--neg); }
+  .veredicto.neu { background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.25); color:var(--gold); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-tag">Análise Financeira · Dados CVM</div>
+  <h1>Itaú Unibanco<br><span>2019 — 2023</span></h1>
+  <p class="hero-sub">Balanço Patrimonial · DRE · Análise Vertical & Horizontal</p>
+  <div class="hero-meta">
+    <div class="meta-pill">Ticker: <strong>ITUB4</strong></div>
+    <div class="meta-pill">CD CVM: <strong>019348</strong></div>
+    <div class="meta-pill">Fonte: <strong>dados.cvm.gov.br</strong></div>
+    <div class="meta-pill">Gerado em: <strong>09/03/2026</strong></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('visao',this)">Visão Geral</button>
+  <button class="tab-btn" onclick="showTab('balanco',this)">Balanço Patrimonial</button>
+  <button class="tab-btn" onclick="showTab('dre',this)">DRE</button>
+  <button class="tab-btn" onclick="showTab('av',this)">Análise Vertical</button>
+  <button class="tab-btn" onclick="showTab('ah',this)">Análise Horizontal</button>
+  <button class="tab-btn" onclick="showTab('analise',this)">📋 Análise Interpretativa</button>
+</div>
+
+<div class="container">
+
+<!-- VISÃO GERAL -->
+<div id="tab-visao" class="section active">
+  <div class="kpi-grid">
+        <div class='kpi-card orange'>
+          <div class='kpi-label'>Ativo Total 2023</div>
+          <div class='kpi-value'>R$ 2.5T</div>
+          <div class='kpi-change pos'>▲ +55.3% vs 2019</div>
+        </div>
+        <div class='kpi-card blue'>
+          <div class='kpi-label'>Receita Fin. 2023</div>
+          <div class='kpi-value'>R$ 313.2B</div>
+          <div class='kpi-change pos'>▲ +62.3% vs 2019</div>
+        </div>
+        <div class='kpi-card green'>
+          <div class='kpi-label'>Lucro Líquido 2023</div>
+          <div class='kpi-value'>R$ 33.9B</div>
+          <div class='kpi-change pos'>▲ +21.8% vs 2019</div>
+        </div>
+        <div class='kpi-card gold'>
+          <div class='kpi-label'>Patrimônio Líq. 2023</div>
+          <div class='kpi-value'>R$ 1.9T</div>
+          <div class='kpi-change pos'>▲ +67.6% vs 2019</div>
+        </div></div>
+  <div class="charts-grid">
+    <div class="chart-card"><h3>Ativo Total vs Patrimônio Líquido (R$ mil)</h3><canvas id="cAtivoPL"></canvas></div>
+    <div class="chart-card"><h3>Receita vs Resultado Bruto vs Lucro Líquido (R$ mil)</h3><canvas id="cDRE"></canvas></div>
+    <div class="chart-card"><h3>Operações de Crédito vs Depósitos (R$ mil)</h3><canvas id="cCredDep"></canvas></div>
+    <div class="chart-card"><h3>Margem Líquida (Lucro / Receita %)</h3><canvas id="cMargem"></canvas></div>
+  </div>
+</div>
+
+<!-- BALANÇO -->
+<div id="tab-balanco" class="section">
+  <p class="section-title">Balanço Patrimonial</p>
+  <p class="section-desc">Valores em R$ mil · Consolidado · Fonte: CVM/DFP</p>
+  
+        <div class='table-block'>
+          <h3>Ativo</h3>
+          <div class='table-wrap'>
+            <table><thead><tr><th>Conta</th><th>2019</th><th>2020</th><th>2021</th><th>2022</th><th>2023</th></tr></thead><tbody><tr><td class='label-cell'>(-) Provisão para Perda Esperada</td><td>-36,029,000</td><td>-47,051,000</td><td>-41,079,000</td><td>-50,687,000</td><td>-47,539,000</td></tr><tr><td class='label-cell'>Ativo Total</td><td>1,637,481,000</td><td>2,019,251,000</td><td>2,069,206,000</td><td>2,323,440,000</td><td>2,543,100,000</td></tr><tr><td class='label-cell'>Ativos Financeiros</td><td>1,501,481,000</td><td>1,851,322,000</td><td>1,915,573,000</td><td>2,172,726,000</td><td>2,384,618,000</td></tr><tr><td class='label-cell'>Caixa e Equivalentes de Caixa</td><td>30,367,000</td><td>46,224,000</td><td>44,512,000</td><td>35,381,000</td><td>32,001,000</td></tr><tr><td class='label-cell'>Operações de Crédito</td><td>585,791,000</td><td>714,104,000</td><td>822,590,000</td><td>909,422,000</td><td>910,590,000</td></tr><tr><td class='label-cell'>Outros Ativos</td><td>14,691,000</td><td>15,773,000</td><td>16,494,000</td><td>17,529,000</td><td>20,168,000</td></tr><tr><td class='label-cell'>Captações no Mercado Aberto</td><td>nan</td><td>nan</td><td>nan</td><td>nan</td><td>296,000</td></tr><tr><td class='label-cell'>Depósitos</td><td>nan</td><td>nan</td><td>nan</td><td>nan</td><td>52,475,000</td></tr><tr><td class='label-cell'>Empréstimos e Repasses</td><td>nan</td><td>nan</td><td>nan</td><td>nan</td><td>nan</td></tr><tr><td class='label-cell'>Passivo Financeiro</td><td>0</td><td>0</td><td>0</td><td>0</td><td>53,331,000</td></tr><tr><td class='label-cell'>Passivo Total</td><td>1,637,481,000</td><td>2,019,251,000</td><td>2,069,206,000</td><td>2,323,440,000</td><td>2,543,100,000</td></tr><tr><td class='label-cell'>Patrimônio Líquido</td><td>1,159,830,000</td><td>1,495,641,000</td><td>1,553,107,000</td><td>1,755,498,000</td><td>1,944,162,000</td></tr></tbody></table>
+          </div>
+        </div>
+  <div class='table-block'><h3>Passivo e Patrimônio Líquido</h3><p style='color:var(--muted)'>Sem dados</p></div>
+</div>
+
+<!-- DRE -->
+<div id="tab-dre" class="section">
+  <p class="section-title">Demonstração do Resultado</p>
+  <p class="section-desc">Valores em R$ mil · Consolidado · Fonte: CVM/DFP</p>
+  
+        <div class='table-block'>
+          <h3>DRE — Valores (R$ mil)</h3>
+          <div class='table-wrap'>
+            <table><thead><tr><th>Conta</th><th>2019</th><th>2020</th><th>2021</th><th>2022</th><th>2023</th></tr></thead><tbody><tr><td class='label-cell'>Despesa de Intermediação Financeira</td><td>-75,958,000</td><td>-73,558,000</td><td>-69,305,000</td><td>-167,802,000</td><td>-188,695,000</td></tr><tr><td class='label-cell'>Lucro Líquido</td><td>27,813,000</td><td>15,064,000</td><td>28,384,000</td><td>30,737,000</td><td>33,877,000</td></tr><tr><td class='label-cell'>Outras Receitas/Despesas Operacionais</td><td>-85,836,000</td><td>-94,969,000</td><td>-84,143,000</td><td>-78,037,000</td><td>-84,826,000</td></tr><tr><td class='label-cell'>Receita de Intermediação Financeira</td><td>193,037,000</td><td>173,757,000</td><td>195,679,000</td><td>283,372,000</td><td>313,221,000</td></tr><tr><td class='label-cell'>Resultado Bruto de Intermediação</td><td>117,079,000</td><td>100,199,000</td><td>126,374,000</td><td>115,570,000</td><td>124,526,000</td></tr><tr><td class='label-cell'>Resultado Operacional</td><td>31,243,000</td><td>5,230,000</td><td>42,231,000</td><td>37,533,000</td><td>39,700,000</td></tr></tbody></table>
+          </div>
+        </div>
+  <div class="charts-grid" style="margin-top:20px">
+    <div class="chart-card"><h3>Receita vs Resultado Bruto (R$ mil)</h3><canvas id="cDRE2"></canvas></div>
+    <div class="chart-card"><h3>Resultado Operacional vs Lucro Líquido (R$ mil)</h3><canvas id="cDRE3"></canvas></div>
+  </div>
+</div>
+
+<!-- AV -->
+<div id="tab-av" class="section">
+  <p class="section-title">Análise Vertical</p>
+  <p class="section-desc">BPA: % do Ativo Total · DRE: % da Receita de Intermediação Financeira</p>
+  
+        <div class='table-block'>
+          <h3>AV — Balanço Ativo (% do Ativo Total)</h3>
+          <div class='table-wrap'>
+            <table><thead><tr><th>Conta</th><th>2019</th><th>2020</th><th>2021</th><th>2022</th><th>2023</th></tr></thead><tbody><tr><td class='label-cell'>(-) Provisão para Perda Esperada</td><td>-2</td><td>-2</td><td>-2</td><td>-2</td><td>-2</td></tr><tr><td class='label-cell'>Ativo Total</td><td>100</td><td>100</td><td>100</td><td>100</td><td>100</td></tr><tr><td class='label-cell'>Ativos Financeiros</td><td>92</td><td>92</td><td>93</td><td>94</td><td>94</td></tr><tr><td class='label-cell'>Caixa e Equivalentes de Caixa</td><td>2</td><td>2</td><td>2</td><td>2</td><td>1</td></tr><tr><td class='label-cell'>Operações de Crédito</td><td>36</td><td>35</td><td>40</td><td>39</td><td>36</td></tr><tr><td class='label-cell'>Outros Ativos</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr></tbody></table>
+          </div>
+        </div>
+  
+        <div class='table-block'>
+          <h3>AV — DRE (% da Receita de Intermediação)</h3>
+          <div class='table-wrap'>
+            <table><thead><tr><th>Conta</th><th>2019</th><th>2020</th><th>2021</th><th>2022</th><th>2023</th></tr></thead><tbody><tr><td class='label-cell'>Despesa de Intermediação Financeira</td><td>-39</td><td>-42</td><td>-35</td><td>-59</td><td>-60</td></tr><tr><td class='label-cell'>Lucro Líquido</td><td>14</td><td>9</td><td>15</td><td>11</td><td>11</td></tr><tr><td class='label-cell'>Outras Receitas/Despesas Operacionais</td><td>-44</td><td>-55</td><td>-43</td><td>-28</td><td>-27</td></tr><tr><td class='label-cell'>Receita de Intermediação Financeira</td><td>100</td><td>100</td><td>100</td><td>100</td><td>100</td></tr><tr><td class='label-cell'>Resultado Bruto de Intermediação</td><td>61</td><td>58</td><td>65</td><td>41</td><td>40</td></tr><tr><td class='label-cell'>Resultado Operacional</td><td>16</td><td>3</td><td>22</td><td>13</td><td>13</td></tr></tbody></table>
+          </div>
+        </div>
+</div>
+
+<!-- AH -->
+<div id="tab-ah" class="section">
+  <p class="section-title">Análise Horizontal</p>
+  <p class="section-desc">Variação % acumulada em relação ao ano-base 2019</p>
+  
+        <div class='table-block'>
+          <h3>AH — Balanço Ativo (variação % vs 2019)</h3>
+          <div class='table-wrap'>
+            <table><thead><tr><th>Conta</th><th>2019</th><th>2020</th><th>2021</th><th>2022</th><th>2023</th></tr></thead><tbody><tr><td class='label-cell'>(-) Provisão para Perda Esperada</td><td class='pos'>+0.0%</td><td class='neg'>-30.6%</td><td class='neg'>-14.0%</td><td class='neg'>-40.7%</td><td class='neg'>-31.9%</td></tr><tr><td class='label-cell'>Ativo Total</td><td class='pos'>+0.0%</td><td class='pos'>+23.3%</td><td class='pos'>+26.4%</td><td class='pos'>+41.9%</td><td class='pos'>+55.3%</td></tr><tr><td class='label-cell'>Ativos Financeiros</td><td class='pos'>+0.0%</td><td class='pos'>+23.3%</td><td class='pos'>+27.6%</td><td class='pos'>+44.7%</td><td class='pos'>+58.8%</td></tr><tr><td class='label-cell'>Caixa e Equivalentes de Caixa</td><td class='pos'>+0.0%</td><td class='pos'>+52.2%</td><td class='pos'>+46.6%</td><td class='pos'>+16.5%</td><td class='pos'>+5.4%</td></tr><tr><td class='label-cell'>Operações de Crédito</td><td class='pos'>+0.0%</td><td class='pos'>+21.9%</td><td class='pos'>+40.4%</td><td class='pos'>+55.2%</td><td class='pos'>+55.5%</td></tr><tr><td class='label-cell'>Outros Ativos</td><td class='pos'>+0.0%</td><td class='pos'>+7.4%</td><td class='pos'>+12.3%</td><td class='pos'>+19.3%</td><td class='pos'>+37.3%</td></tr></tbody></table>
+          </div>
+        </div>
+  
+        <div class='table-block'>
+          <h3>AH — DRE (variação % vs 2019)</h3>
+          <div class='table-wrap'>
+            <table><thead><tr><th>Conta</th><th>2019</th><th>2020</th><th>2021</th><th>2022</th><th>2023</th></tr></thead><tbody><tr><td class='label-cell'>Despesa de Intermediação Financeira</td><td class='pos'>+0.0%</td><td class='pos'>+3.2%</td><td class='pos'>+8.8%</td><td class='neg'>-120.9%</td><td class='neg'>-148.4%</td></tr><tr><td class='label-cell'>Lucro Líquido</td><td class='pos'>+0.0%</td><td class='neg'>-45.8%</td><td class='pos'>+2.0%</td><td class='pos'>+10.5%</td><td class='pos'>+21.8%</td></tr><tr><td class='label-cell'>Outras Receitas/Despesas Operacionais</td><td class='pos'>+0.0%</td><td class='neg'>-10.6%</td><td class='pos'>+2.0%</td><td class='pos'>+9.1%</td><td class='pos'>+1.2%</td></tr><tr><td class='label-cell'>Receita de Intermediação Financeira</td><td class='pos'>+0.0%</td><td class='neg'>-10.0%</td><td class='pos'>+1.4%</td><td class='pos'>+46.8%</td><td class='pos'>+62.3%</td></tr><tr><td class='label-cell'>Resultado Bruto de Intermediação</td><td class='pos'>+0.0%</td><td class='neg'>-14.4%</td><td class='pos'>+7.9%</td><td class='neg'>-1.3%</td><td class='pos'>+6.4%</td></tr><tr><td class='label-cell'>Resultado Operacional</td><td class='pos'>+0.0%</td><td class='neg'>-83.3%</td><td class='pos'>+35.2%</td><td class='pos'>+20.1%</td><td class='pos'>+27.1%</td></tr></tbody></table>
+          </div>
+        </div>
+</div>
+
+<!-- ANÁLISE INTERPRETATIVA -->
+<div id="tab-analise" class="section">
+  <p class="section-title">Análise Interpretativa</p>
+  <p class="section-desc">Respostas automáticas baseadas nos dados reais extraídos da CVM · 2019–2023</p>
+  <div class='analise-grid'>
+        <div class='analise-card verde'>
+          <div class='analise-num'>Questão 01</div>
+          <div class='analise-pergunta'>O crescimento foi sustentável? Ativos e receita avançaram de forma equilibrada?</div>
+          <div class='analise-metricas'><div class='metrica-pill'><span class='ml'>Ativo Total 2019</span><span class='mv'>R$ 1.6T</span></div><div class='metrica-pill'><span class='ml'>Ativo Total 2023</span><span class='mv'>R$ 2.5T</span></div><div class='metrica-pill'><span class='ml'>Variação Ativo</span><span class='mv'>▲ +55.3%</span></div><div class='metrica-pill'><span class='ml'>Variação Receita</span><span class='mv'>▲ +62.3%</span></div></div>
+          <div class='analise-body'>Entre 2019 e 2023, o <strong>Ativo Total</strong> cresceu <strong>▲ +55.3%</strong> (R$ 1.6T → R$ 2.5T), enquanto a <strong>Receita de Intermediação Financeira</strong> variou <strong>▲ +62.3%</strong> (R$ 193.0B → R$ 313.2B). O crescimento foi equilibrado, com ativos e receita avançando em proporção similar, indicando expansão saudável.</div>
+          <div class='veredicto pos'>✅ Crescimento equilibrado entre ativos e receita</div>
+        </div>
+        <div class='analise-card laranja'>
+          <div class='analise-num'>Questão 02</div>
+          <div class='analise-pergunta'>Os custos cresceram proporcionalmente às receitas? Como isso impacta a margem?</div>
+          <div class='analise-metricas'><div class='metrica-pill'><span class='ml'>Margem Bruta 2019</span><span class='mv'>60.7%</span></div><div class='metrica-pill'><span class='ml'>Margem Bruta 2023</span><span class='mv'>39.8%</span></div><div class='metrica-pill'><span class='ml'>Margem Líquida 2019</span><span class='mv'>14.4%</span></div><div class='metrica-pill'><span class='ml'>Margem Líquida 2023</span><span class='mv'>10.8%</span></div></div>
+          <div class='analise-body'>A margem bruta de intermediação saiu de <strong>60.7%</strong> em 2019 para <strong>39.8%</strong> em 2023 (<strong>-20.9 p.p.</strong>). As despesas de intermediação cresceram mais que a receita, comprimindo a margem bruta. Isso pode refletir maior custo de captação ou aumento na provisão para perdas. A margem líquida recuou de <strong>14.4%</strong> para <strong>10.8%</strong>.</div>
+          <div class='veredicto neg'>⚠️ Compressão de margem (-20.9 p.p. no período)</div>
+        </div>
+        <div class='analise-card azul'>
+          <div class='analise-num'>Questão 03</div>
+          <div class='analise-pergunta'>A empresa aumentou ou reduziu seus estoques/carteira de crédito? Eficiência ou risco?</div>
+          <div class='analise-metricas'><div class='metrica-pill'><span class='ml'>Crédito 2019</span><span class='mv'>R$ 585.8B</span></div><div class='metrica-pill'><span class='ml'>Crédito 2023</span><span class='mv'>R$ 910.6B</span></div><div class='metrica-pill'><span class='ml'>Variação</span><span class='mv'>▲ +55.4%</span></div><div class='metrica-pill'><span class='ml'>% do Ativo 2023</span><span class='mv'>35.8%</span></div></div>
+          <div class='analise-body'>Para instituições financeiras como o Itaú, a carteira de <strong>Operações de Crédito</strong> equivale aos 'estoques' de uma empresa industrial — representa o principal ativo gerador de receita. A carteira cresceu <strong>▲ +55.4%</strong> no período (R$ 585.8B → R$ 910.6B). Expansão da carteira de crédito indica estratégia de crescimento, mas requer monitoramento da inadimplência e da provisão para perdas.</div>
+          <div class='veredicto pos'>✅ Expansão da carteira de crédito — crescimento ativo</div>
+        </div>
+        <div class='analise-card vermelho'>
+          <div class='analise-num'>Questão 04</div>
+          <div class='analise-pergunta'>O endividamento cresceu? O crescimento foi financiado com capital próprio ou dívida?</div>
+          <div class='analise-metricas'><div class='metrica-pill'><span class='ml'>PL 2019</span><span class='mv'>R$ 1.2T</span></div><div class='metrica-pill'><span class='ml'>PL 2023</span><span class='mv'>R$ 1.9T</span></div><div class='metrica-pill'><span class='ml'>Var. PL</span><span class='mv'>▲ +67.6%</span></div><div class='metrica-pill'><span class='ml'>Alavancagem 2023</span><span class='mv'>1.3x</span></div></div>
+          <div class='analise-body'>O <strong>Patrimônio Líquido</strong> variou <strong>▲ +67.6%</strong> (R$ 1.2T → R$ 1.9T). Os <strong>Depósitos</strong> (principal fonte de funding) variaram <strong>N/D</strong> e os <strong>Empréstimos e Repasses</strong> variaram <strong>N/D</strong>. O crescimento do PL acima do endividamento indica que o banco financiou parte de sua expansão com capital próprio, fortalecendo sua base patrimonial. A alavancagem (Passivo/PL) caiu de <strong>1.4x</strong> para <strong>1.3x</strong>.</div>
+          <div class='veredicto pos'>✅ PL cresceu — expansão com fortalecimento patrimonial</div>
+        </div>
+        <div class='analise-card ouro'>
+          <div class='analise-num'>Questão 05</div>
+          <div class='analise-pergunta'>A liquidez melhorou ou piorou? Caixa e recebíveis cobrem as obrigações?</div>
+          <div class='analise-metricas'><div class='metrica-pill'><span class='ml'>Caixa 2019</span><span class='mv'>R$ 30.4B</span></div><div class='metrica-pill'><span class='ml'>Caixa 2023</span><span class='mv'>R$ 32.0B</span></div><div class='metrica-pill'><span class='ml'>Variação Caixa</span><span class='mv'>▲ +5.4%</span></div><div class='metrica-pill'><span class='ml'>Caixa/Ativo 2023</span><span class='mv'>1.3%</span></div></div>
+          <div class='analise-body'>O <strong>Caixa e Equivalentes</strong> variou <strong>▲ +5.4%</strong> (R$ 30.4B → R$ 32.0B). Em relação ao ativo total, o caixa representava <strong>1.9%</strong> em 2019 e <strong>1.3%</strong> em 2023. O aumento do caixa melhora a capacidade de honrar obrigações de curto prazo e indica postura conservadora de gestão de liquidez. Para bancos, a liquidez também é regulada pelo BACEN através dos índices LCR e NSFR, não capturados nesta análise.</div>
+          <div class='veredicto pos'>✅ Posição de caixa fortalecida no período</div>
+        </div></div>
+</div>
+
+</div><!-- /container -->
+
+<footer>ITAÚ UNIBANCO HOLDING S.A. · CD CVM 019348 · Dados: dados.cvm.gov.br · Uso analítico</footer>
+
+<script>
+const ANOS    = [2019, 2020, 2021, 2022, 2023];
+const BAL     = [{"Conta":"(-) Provisão para Perda Esperada","Codigo":"1.02.03.06","2019":-36029000.0,"2020":-47051000.0,"2021":-41079000.0,"2022":-50687000.0,"2023":-47539000.0},{"Conta":"Ativo Total","Codigo":"1","2019":1637481000.0,"2020":2019251000.0,"2021":2069206000.0,"2022":2323440000.0,"2023":2543100000.0},{"Conta":"Ativos Financeiros","Codigo":"1.02","2019":1501481000.0,"2020":1851322000.0,"2021":1915573000.0,"2022":2172726000.0,"2023":2384618000.0},{"Conta":"Caixa e Equivalentes de Caixa","Codigo":"1.01","2019":30367000.0,"2020":46224000.0,"2021":44512000.0,"2022":35381000.0,"2023":32001000.0},{"Conta":"Operações de Crédito","Codigo":"1.02.03.04","2019":585791000.0,"2020":714104000.0,"2021":822590000.0,"2022":909422000.0,"2023":910590000.0},{"Conta":"Outros Ativos","Codigo":"1.04","2019":14691000.0,"2020":15773000.0,"2021":16494000.0,"2022":17529000.0,"2023":20168000.0},{"Conta":"Captações no Mercado Aberto","Codigo":"2.01.02","2019":null,"2020":null,"2021":null,"2022":null,"2023":296000.0},{"Conta":"Depósitos","Codigo":"2.01.01","2019":null,"2020":null,"2021":null,"2022":null,"2023":52475000.0},{"Conta":"Empréstimos e Repasses","Codigo":"2.01.06","2019":null,"2020":null,"2021":null,"2022":null,"2023":null},{"Conta":"Passivo Financeiro","Codigo":"2.01","2019":0.0,"2020":0.0,"2021":0.0,"2022":0.0,"2023":53331000.0},{"Conta":"Passivo Total","Codigo":"2","2019":1637481000.0,"2020":2019251000.0,"2021":2069206000.0,"2022":2323440000.0,"2023":2543100000.0},{"Conta":"Patrimônio Líquido","Codigo":"2.03","2019":1159830000.0,"2020":1495641000.0,"2021":1553107000.0,"2022":1755498000.0,"2023":1944162000.0}];
+const DRE_DAT = [{"Conta":"Despesa de Intermediação Financeira","Codigo":"3.02","2019":-75958000.0,"2020":-73558000.0,"2021":-69305000.0,"2022":-167802000.0,"2023":-188695000.0},{"Conta":"Lucro Líquido","Codigo":"3.09","2019":27813000.0,"2020":15064000.0,"2021":28384000.0,"2022":30737000.0,"2023":33877000.0},{"Conta":"Outras Receitas\/Despesas Operacionais","Codigo":"3.04","2019":-85836000.0,"2020":-94969000.0,"2021":-84143000.0,"2022":-78037000.0,"2023":-84826000.0},{"Conta":"Receita de Intermediação Financeira","Codigo":"3.01","2019":193037000.0,"2020":173757000.0,"2021":195679000.0,"2022":283372000.0,"2023":313221000.0},{"Conta":"Resultado Bruto de Intermediação","Codigo":"3.03","2019":117079000.0,"2020":100199000.0,"2021":126374000.0,"2022":115570000.0,"2023":124526000.0},{"Conta":"Resultado Operacional","Codigo":"3.05","2019":31243000.0,"2020":5230000.0,"2021":42231000.0,"2022":37533000.0,"2023":39700000.0}];
+
+function get(data, conta) {
+  const row = data.find(r => r["Conta"] === conta);
+  if (!row) return ANOS.map(() => null);
+  return ANOS.map(a => { const v = row[String(a)]; return (v != null && !isNaN(v)) ? v : null; });
+}
+
+const CD = {
+  plugins: { legend: { labels: { color:"#94a3b8", font:{ family:"DM Mono", size:11 } } } },
+  scales: {
+    x: { ticks:{ color:"#64748b" }, grid:{ color:"rgba(255,255,255,.04)" } },
+    y: { ticks:{ color:"#64748b" }, grid:{ color:"rgba(255,255,255,.06)" } }
+  },
+  responsive: true
+};
+
+function mkLine(id, datasets) {
+  new Chart(document.getElementById(id), { type:"line",
+    data:{ labels:ANOS, datasets }, options:{ ...CD } });
+}
+function mkBar(id, datasets) {
+  new Chart(document.getElementById(id), { type:"bar",
+    data:{ labels:ANOS, datasets }, options:{ ...CD, scales:{ ...CD.scales,
+      x:{ ...CD.scales.x, stacked:false }, y:{ ...CD.scales.y, stacked:false } } } });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const ativo   = get(BAL,     "Ativo Total");
+  const pl      = get(BAL,     "Patrimônio Líquido");
+  const receita = get(DRE_DAT, "Receita de Intermediação Financeira");
+  const resBrut = get(DRE_DAT, "Resultado Bruto de Intermediação");
+  const lucro   = get(DRE_DAT, "Lucro Líquido");
+  const resOp   = get(DRE_DAT, "Resultado Operacional");
+  const credito = get(BAL,     "Operações de Crédito");
+  const deposit = get(BAL,     "Depósitos");
+
+  const sc = v => v != null ? v/1e3 : null; // R$ mil → R$ milhões para legibilidade
+
+  mkBar("cAtivoPL", [
+    { label:"Ativo Total",        data:ativo.map(sc),   backgroundColor:"rgba(249,115,22,.75)", borderRadius:4 },
+    { label:"Patrimônio Líquido", data:pl.map(sc),      backgroundColor:"rgba(59,130,246,.75)",  borderRadius:4 }
+  ]);
+
+  mkBar("cDRE", [
+    { label:"Receita",         data:receita.map(sc), backgroundColor:"rgba(249,115,22,.75)", borderRadius:4 },
+    { label:"Resultado Bruto", data:resBrut.map(sc), backgroundColor:"rgba(59,130,246,.75)",  borderRadius:4 },
+    { label:"Lucro Líquido",   data:lucro.map(sc),   backgroundColor:"rgba(16,185,129,.75)",  borderRadius:4 }
+  ]);
+
+  mkBar("cCredDep", [
+    { label:"Operações de Crédito", data:credito.map(sc), backgroundColor:"rgba(245,158,11,.75)", borderRadius:4 },
+    { label:"Depósitos",            data:deposit.map(sc), backgroundColor:"rgba(139,92,246,.75)",  borderRadius:4 }
+  ]);
+
+  // Margem líquida
+  const margem = receita.map((r,i) => r && lucro[i] ? parseFloat((lucro[i]/r*100).toFixed(2)) : null);
+  mkLine("cMargem", [{
+    label:"Margem Líquida (%)", data:margem,
+    borderColor:"#f59e0b", backgroundColor:"rgba(245,158,11,.1)",
+    fill:true, tension:.4, pointRadius:6, pointBackgroundColor:"#f59e0b"
+  }]);
+
+  mkBar("cDRE2", [
+    { label:"Receita",         data:receita.map(sc), backgroundColor:"rgba(249,115,22,.75)", borderRadius:4 },
+    { label:"Resultado Bruto", data:resBrut.map(sc), backgroundColor:"rgba(59,130,246,.75)",  borderRadius:4 }
+  ]);
+
+  mkLine("cDRE3", [
+    { label:"Resultado Operacional", data:resOp.map(sc),
+       borderColor:"#3b82f6", backgroundColor:"rgba(59,130,246,.1)", fill:true, tension:.4, pointRadius:5 },
+    { label:"Lucro Líquido", data:lucro.map(sc),
+       borderColor:"#10b981", backgroundColor:"rgba(16,185,129,.1)", fill:true, tension:.4, pointRadius:5 }
+  ]);
+});
+
+function showTab(id, btn) {
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + id).classList.add("active");
+  btn.classList.add("active");
+}
+</script>
+</body>
+</html>
