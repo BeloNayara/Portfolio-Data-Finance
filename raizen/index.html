@@ -4,446 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Raízen S.A. — Análise Completa</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
-// ═══════════════════════════════════════════════════════════════════════
-// EXTRA DATA — Análise H/V, Liquidez, Endividamento, Solvência
-// ═══════════════════════════════════════════════════════════════════════
-const EX = EX;
-
-const AN4 = PY.AN;
-const AN3 = ['22/23 Δ%','23/24 Δ%','24/25 Δ%'];
-
-// ── sub-tab controller ───────────────────────────────────────────────────
-function fintab(id, btn) {
-  document.querySelectorAll('[id^="fin-"]').forEach(el => el.classList.remove('on'));
-  document.querySelectorAll('#fin-subtabs .stab').forEach(b => b.classList.remove('on'));
-  const el = document.getElementById('fin-'+id);
-  if(el) el.classList.add('on');
-  if(btn) btn.classList.add('on');
-}
-
-// ── helpers ──────────────────────────────────────────────────────────────
-function acumPct(serie) {
-  const base = serie[0];
-  return serie.map(v => base !== 0 ? +((v - base) / Math.abs(base) * 100).toFixed(2) : 0);
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// HORIZONTAL
-// ════════════════════════════════════════════════════════════════════════
-(function(){
-  const dre_delta = [EX.h_receita, EX.h_ebitda, EX.h_ebit, EX.h_lucroliq];
-  const colors    = ['rgba(29,158,117,.7)','rgba(239,159,39,.7)','rgba(155,135,245,.7)','rgba(226,75,74,.8)'];
-  const el = document.getElementById('ch_dre');
-  if(!el) return;
-  new Chart(el, {
-    type:'bar',
-    data:{ labels: AN3, datasets: dre_delta.map((d,i)=>({
-      data: d.slice(1),
-      backgroundColor: colors[i],
-      borderRadius: 4,
-      barPercentage: 0.22,
-    }))},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-              y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(1)+'%'}}}}
-  });
-})();
-
-(function(){
-  const el = document.getElementById('ch_acum');
-  if(!el) return;
-  new Chart(el, {
-    type:'line',
-    data:{ labels: AN4, datasets:[
-      {data:acumPct(EX.receita_base),     borderColor:'#1d9e75',borderWidth:2,fill:false,tension:.3,pointRadius:4},
-      {data:acumPct(EX.divida_bruta),     borderColor:'#e24b4a',borderWidth:2.5,fill:false,tension:.3,pointRadius:4},
-      {data:acumPct(EX.juros_pagos),      borderColor:'#9b87f5',borderWidth:2,fill:false,tension:.3,pointRadius:4},
-      {data:acumPct(EX.fco_base),         borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.3,pointRadius:4},
-      {data:[0,0,0,0],borderColor:'rgba(0,0,0,.15)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-              y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(0)+'%'}}}}
-  });
-})();
-
-// Tabela horizontal DRE
-(function(){
-  const el=document.getElementById('tbl_hdre');
-  if(!el)return;
-  const rows=[
-    ['Receita',       EX.h_receita,       false],
-    ['Lucro bruto',   EX.h_lucrobruto,    true],
-    ['EBITDA',        EX.h_ebitda,        true],
-    ['EBIT',          EX.h_ebit,          true],
-    ['Res. financeiro',EX.h_resfinanceiro,true],
-    ['Lucro líq.',    EX.h_lucroliq,      true],
-    ['FCO',           EX.h_fco,           true],
-    ['Capex',         EX.h_capex,         false],
-    ['Juros pagos',   EX.h_juros,         true],
-  ];
-  el.innerHTML='<thead><tr><th>Conta</th><th>22/23 Δ%</th><th>23/24 Δ%</th><th>24/25 Δ%</th><th>Acum.</th></tr></thead>';
-  const tb=document.createElement('tbody');
-  rows.forEach(([n,d,queda_ruim])=>{
-    const tr=document.createElement('tr');
-    const base=EX.receita_base; // placeholder
-    const acum=d[0]!==null ? d.slice(1).reduce((a,v)=>{
-      // Acumulado simples: var base→fim
-      return null; // compute below
-    },null) : null;
-    // Compute acum properly: just show base→fim from raw series
-    const seriesMap = {
-      'Receita':EX.receita_base,'Lucro bruto':null,'EBITDA':EX.ebitda_base,'EBIT':EX.ebit_base,
-      'Res. financeiro':null,'Lucro líq.':EX.lucro_liq_base,'FCO':EX.fco_base,'Capex':EX.capex_base,'Juros pagos':EX.juros_pagos
-    };
-    const s=seriesMap[n];
-    let acumStr='—';
-    if(s){
-      const b=s[0],f=s[3];
-      if(b!==0){const v=(f-b)/Math.abs(b)*100;acumStr=(v>0?'+':'')+v.toFixed(1)+'%';}
-    }
-    const cells=d.slice(1).map(v=>{
-      if(v===null||v===undefined)return'<td class="n">N/A</td>';
-      const bad=queda_ruim?(v<-5):(v<0);
-      const good=!queda_ruim&&v>5;
-      const cls=bad?'nr':good?'ng':'na';
-      return`<td class="${cls}">${v>0?'+':''}${v.toFixed(1)}%</td>`;
-    });
-    const acumCls=acumStr.startsWith('-')?'nr':acumStr.startsWith('+')?'ng':'n';
-    tr.innerHTML=`<td class="lbl">${n}</td>${cells.join('')}<td class="${acumCls}">${acumStr}</td>`;
-    tb.appendChild(tr);
-  });
-  el.appendChild(tb);
-})();
-
-// Tabela horizontal Balanço
-(function(){
-  const el=document.getElementById('tbl_hbp');
-  if(!el)return;
-  const rows=[
-    ['Ativo total',    EX.h_atotal,   false, EX.receita_base/* placeholder */,null],
-    ['Passivo circ.',  EX.h_passivoc, true,  null,null],
-    ['Dívida bruta',   EX.h_divida,   true,  null,null],
-    ['PL',             EX.h_pl,       false, null,null],
-  ];
-  el.innerHTML='<thead><tr><th>Conta</th><th>22/23 Δ%</th><th>23/24 Δ%</th><th>24/25 Δ%</th></tr></thead>';
-  const tb=document.createElement('tbody');
-  [
-    ['Ativo total',   EX.h_atotal,   false],
-    ['Ativo circ.',   null,          false],
-    ['Passivo circ.', EX.h_passivoc, true],
-    ['Dívida bruta',  EX.h_divida,   true],
-    ['PL',            EX.h_pl,       false],
-  ].forEach(([n,d,bad_up])=>{
-    if(!d)return;
-    const tr=document.createElement('tr');
-    const cells=d.slice(1).map(v=>{
-      if(v===null||v===undefined)return'<td class="n">N/A</td>';
-      const bad=bad_up?(v>20):(v<-30&&n==='PL');
-      const cls=bad?'nr':(bad_up&&v<0)?'ng':'na';
-      return`<td class="${cls}">${v>0?'+':''}${v.toFixed(1)}%</td>`;
-    });
-    tr.innerHTML=`<td class="lbl">${n}</td>${cells.join('')}`;
-    tb.appendChild(tr);
-  });
-  el.appendChild(tb);
-})();
-
-// ════════════════════════════════════════════════════════════════════════
-// VERTICAL
-// ════════════════════════════════════════════════════════════════════════
-(function(){
-  const el=document.getElementById('cv_dre');
-  if(!el)return;
-  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
-    {data:EX.v_lucrobruto.map(v=>+(v*100).toFixed(2)),    borderColor:'#1d9e75',borderWidth:2,fill:false,tension:.4,pointRadius:4},
-    {data:EX.v_ebitda.map(v=>+(v*100).toFixed(2)),        borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.4,pointRadius:4},
-    {data:EX.v_ebit.map(v=>+(v*100).toFixed(2)),          borderColor:'#9b87f5',borderWidth:2,fill:false,tension:.4,pointRadius:4},
-    {data:EX.v_lucroliq.map(v=>+(v*100).toFixed(2)),      borderColor:'#e24b4a',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,
-      pointBackgroundColor:EX.v_lucroliq.map(v=>v<0?'#8b0000':'#e24b4a')},
-    {data:EX.v_resfinanceiro.map(v=>+(v*100).toFixed(2)), borderColor:'#378add',borderWidth:1.5,fill:false,tension:.4,pointRadius:3,borderDash:[4,3]},
-    {data:[0,0,0,0],borderColor:'rgba(0,0,0,.12)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(1)+'%'}}}}});
-})();
-
-(function(){
-  const el=document.getElementById('cv_bp');
-  if(!el)return;
-  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
-    {data:EX.v_caixa.map(v=>+(v*100).toFixed(2)),    borderColor:'#1d9e75',borderWidth:2,fill:false,tension:.4,pointRadius:4},
-    {data:EX.v_divida.map(v=>+(v*100).toFixed(2)),   borderColor:'#e24b4a',borderWidth:2.5,fill:false,tension:.4,pointRadius:5},
-    {data:EX.v_pl.map(v=>+(v*100).toFixed(2)),       borderColor:'#9b87f5',borderWidth:2,fill:false,tension:.4,pointRadius:4,
-      pointBackgroundColor:EX.v_pl.map(v=>v<0?'#8b0000':'#9b87f5')},
-    {data:EX.v_passivoc.map(v=>+(v*100).toFixed(2)), borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.4,pointRadius:4},
-    {data:[0,0,0,0],borderColor:'rgba(0,0,0,.12)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(1)+'%'}}}}});
-})();
-
-// Tabela vertical DRE
-(function(){
-  const el=document.getElementById('tbl_vdre');
-  if(!el)return;
-  el.innerHTML='<thead><tr><th>Conta</th>'+AN4.map(a=>`<th style="text-align:right">${a}</th>`).join('')+'</tr></thead>';
-  const tb=document.createElement('tbody');
-  [
-    ['Margem Bruta',     EX.v_lucrobruto],
-    ['EBITDA %',         EX.v_ebitda],
-    ['EBIT %',           EX.v_ebit],
-    ['Res. Financeiro %',EX.v_resfinanceiro],
-    ['Margem Líquida %', EX.v_lucroliq],
-  ].forEach(([n,d])=>{
-    const tr=document.createElement('tr');
-    const cells=d.map(v=>{
-      const pv=+(v*100).toFixed(2);
-      const cls=pv<0?'nr':pv>8?'ng':'na';
-      return`<td class="${cls}">${pv>0?'+':''}${pv.toFixed(2)}%</td>`;
-    });
-    tr.innerHTML=`<td class="lbl">${n}</td>${cells.join('')}`;
-    tb.appendChild(tr);
-  });
-  el.appendChild(tb);
-})();
-
-// Tabela vertical BP
-(function(){
-  const el=document.getElementById('tbl_vbp');
-  if(!el)return;
-  el.innerHTML='<thead><tr><th>Conta (%AT)</th>'+AN4.map(a=>`<th style="text-align:right">${a}</th>`).join('')+'</tr></thead>';
-  const tb=document.createElement('tbody');
-  [
-    ['Caixa/AT',        EX.v_caixa,    false],
-    ['Estoques/AT',     EX.v_estoques, false],
-    ['Imobilizado/AT',  EX.v_imob,     false],
-    ['Dívida Bruta/AT', EX.v_divida,   true],
-    ['Pass.Circ./AT',   EX.v_passivoc, true],
-    ['PL/AT',           EX.v_pl,       true],
-  ].forEach(([n,d,danger_up])=>{
-    const tr=document.createElement('tr');
-    const cells=d.map(v=>{
-      const pv=+(v*100).toFixed(2);
-      const bad=danger_up?pv>60:pv<0;
-      const cls=bad?'nr':danger_up&&pv<30?'ng':'na';
-      return`<td class="${cls}">${pv>0?'+':''}${pv.toFixed(2)}%</td>`;
-    });
-    tr.innerHTML=`<td class="lbl">${n}</td>${cells.join('')}`;
-    tb.appendChild(tr);
-  });
-  el.appendChild(tb);
-})();
-
-// ════════════════════════════════════════════════════════════════════════
-// LIQUIDEZ
-// ════════════════════════════════════════════════════════════════════════
-document.getElementById('kv_lc').textContent = EX.liq_corrente[3].toFixed(3)+'×';
-document.getElementById('kv_ls').textContent = EX.liq_seca[3].toFixed(3)+'×';
-document.getElementById('kv_li').textContent = EX.liq_imediata[3].toFixed(3)+'×';
-document.getElementById('kv_lg').textContent = EX.liq_geral[3].toFixed(3)+'×';
-document.getElementById('kv_cgl').textContent = 'R$'+EX.cgl[3].toFixed(1)+' bi';
-
-(function(){
-  const el=document.getElementById('cl_idx');
-  if(!el)return;
-  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
-    {data:EX.liq_corrente, borderColor:'#1d9e75',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,
-      pointBackgroundColor:EX.liq_corrente.map(v=>v<1?'#8b0000':v<1.5?'#ef9f27':'#1d9e75')},
-    {data:EX.liq_seca,     borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.4,pointRadius:4},
-    {data:EX.liq_imediata, borderColor:'#9b87f5',borderWidth:2,fill:false,tension:.4,pointRadius:4},
-    {data:EX.liq_geral,    borderColor:'#378add',borderWidth:2,fill:false,tension:.4,pointRadius:4},
-    {data:[1,1,1,1],borderColor:'rgba(226,75,74,.5)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
-    {data:[1.5,1.5,1.5,1.5],borderColor:'rgba(29,158,117,.3)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(2)+'×'},min:0,max:1.6}}}});
-})();
-
-(function(){
-  const el=document.getElementById('cl_cgl');
-  if(!el)return;
-  new Chart(el,{type:'bar',data:{labels:AN4,datasets:[
-    {data:EX.ativo_circ,              backgroundColor:'rgba(29,158,117,.6)',borderRadius:3,barPercentage:.35,stack:'s'},
-    {data:EX.passivo_circ.map(v=>-v), backgroundColor:'rgba(226,75,74,.6)', borderRadius:3,barPercentage:.35,stack:'s'},
-    {data:EX.cgl,type:'line',borderColor:'#9b87f5',borderWidth:2.5,fill:false,tension:.3,pointRadius:5,
-      pointBackgroundColor:EX.cgl.map(v=>v<0?'#8b0000':'#9b87f5')},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{stacked:true,grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v+'bi'}}}}});
-})();
-
-(function(){
-  const el=document.getElementById('liq_semaforo');
-  if(!el)return;
-  const REFS={liq_corrente:{ok:1.5,atencao:1.0,critico:0.9},liq_seca:{ok:1.0,atencao:0.7,critico:0.5},liq_imediata:{ok:0.5,atencao:0.2,critico:0.1},liq_geral:{ok:1.0,atencao:0.7,critico:0.5}};
-  function sem(v,k){const r=REFS[k];return v>=r.ok?{l:'ADEQUADO',c:'#1d9e75'}:v>=r.atencao?{l:'ATENÇÃO',c:'#ef9f27'}:v>=r.critico?{l:'ALERTA',c:'#e87c27'}:{l:'CRÍTICO',c:'#e24b4a'};}
-  [['Liq. Corrente',EX.liq_corrente,'liq_corrente'],['Liq. Seca',EX.liq_seca,'liq_seca'],['Liq. Imediata',EX.liq_imediata,'liq_imediata'],['Liq. Geral',EX.liq_geral,'liq_geral']].forEach(([nome,serie,key])=>{
-    const h=document.createElement('div');
-    h.style.cssText='font-size:9px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;padding:7px 0 3px;border-bottom:1px solid #f0efe8';
-    h.textContent=nome;
-    el.appendChild(h);
-    serie.forEach((v,i)=>{
-      const s=sem(v,key);
-      const row=document.createElement('div');
-      row.className='sbar';
-      row.innerHTML=`<span class="sbar-lbl">${AN4[i]}</span><div class="sbar-bg"><div class="sbar-fill" style="width:${Math.min(v/2*100,100)}%;background:${s.c}"></div></div><span class="sbar-val" style="color:${s.c};min-width:120px">${v.toFixed(3)}× — ${s.l}</span>`;
-      el.appendChild(row);
-    });
-  });
-})();
-
-(function(){
-  const el=document.getElementById('cl_paradox');
-  if(!el)return;
-  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
-    {data:EX.caixa, borderColor:'#1d9e75',borderWidth:2.5,fill:true,backgroundColor:'rgba(29,158,117,.07)',tension:.4,pointRadius:5,yAxisID:'y'},
-    {data:EX.liq_imediata, borderColor:'#e24b4a',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,yAxisID:'y2'},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v+'bi'},min:0,max:25},
-            y2:{position:'right',grid:{display:false},ticks:{color:'#e24b4a',font:{size:10},callback:v=>v.toFixed(2)+'×'},min:0,max:1.2}}}});
-})();
-
-// ════════════════════════════════════════════════════════════════════════
-// ENDIVIDAMENTO
-// ════════════════════════════════════════════════════════════════════════
-document.getElementById('kv_eg').textContent = EX.end_geral[3].toFixed(1)+'%';
-document.getElementById('kv_eo').textContent = EX.end_oneroso[3].toFixed(1)+'%';
-document.getElementById('kv_de').textContent = EX.dl_ebitda[3].toFixed(2)+'×';
-document.getElementById('kv_ce').textContent = EX.cob_ebit[3].toFixed(3)+'×';
-document.getElementById('kv_cf').textContent = EX.cob_fco[3].toFixed(3)+'×';
-
-(function(){
-  const el=document.getElementById('ce_geral');
-  if(!el)return;
-  new Chart(el,{type:'bar',data:{labels:AN4,datasets:[
-    {data:EX.end_geral,   backgroundColor:'rgba(226,75,74,.65)',borderRadius:3,barPercentage:.3,yAxisID:'y'},
-    {data:EX.end_oneroso, backgroundColor:'rgba(239,159,39,.65)',borderRadius:3,barPercentage:.3,yAxisID:'y'},
-    {data:EX.dl_ebitda, type:'line',borderColor:'#9b87f5',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,
-      pointBackgroundColor:EX.dl_ebitda.map(v=>v>4.5?'#8b0000':v>2.5?'#e24b4a':'#9b87f5'),yAxisID:'y2'},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v+'%'},min:0,max:120},
-            y2:{position:'right',grid:{display:false},ticks:{color:'#9b87f5',font:{size:10},callback:v=>v.toFixed(1)+'×'},min:0,max:7}}}});
-})();
-
-(function(){
-  const el=document.getElementById('ce_cob');
-  if(!el)return;
-  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
-    {data:EX.cob_ebit, borderColor:'#9b87f5',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,
-      pointBackgroundColor:EX.cob_ebit.map(v=>v<0?'#8b0000':v<1?'#e24b4a':v<2?'#ef9f27':'#9b87f5')},
-    {data:EX.cob_fco,  borderColor:'#1d9e75',borderWidth:2,fill:false,tension:.4,pointRadius:4,
-      pointBackgroundColor:EX.cob_fco.map(v=>v<1?'#e24b4a':v<1.5?'#ef9f27':'#1d9e75')},
-    {data:[1,1,1,1],borderColor:'rgba(226,75,74,.5)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
-    {data:[2,2,2,2],borderColor:'rgba(239,159,39,.3)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(2)+'×'},min:-1.2,max:2.5}}}});
-})();
-
-(function(){
-  const el=document.getElementById('ce_comp');
-  if(!el)return;
-  new Chart(el,{type:'bar',data:{labels:AN4,datasets:[
-    {data:EX.comp_end,             label:'Curto Prazo',backgroundColor:'rgba(226,75,74,.65)',borderRadius:3,barPercentage:.5,stack:'s'},
-    {data:EX.comp_end.map(v=>100-v),label:'Longo Prazo',backgroundColor:'rgba(29,158,117,.5)',borderRadius:3,barPercentage:.5,stack:'s'},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{stacked:true,grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v+'%'},min:0,max:100}}}});
-})();
-
-(function(){
-  const el=document.getElementById('tbl_endiv');
-  if(!el)return;
-  el.innerHTML='<thead><tr><th>Índice</th>'+AN4.map(p=>`<th style="text-align:right">${p}</th>`).join('')+'<th>Ref.</th></tr></thead>';
-  const tb=document.createElement('tbody');
-  [
-    ['End. Geral %',     EX.end_geral,   v=>v>50,  '<50%'],
-    ['Comp. CP %',       EX.comp_end,    v=>v>40,  '<40%'],
-    ['End. Oneroso %',   EX.end_oneroso, v=>v>30,  '<30%'],
-    ['DL/EBITDA ×',      EX.dl_ebitda,   v=>v>2.5, '<2,5×'],
-    ['Cob. EBIT ×',      EX.cob_ebit,    v=>v<2,   '>2,0×'],
-    ['Cob. FCO ×',       EX.cob_fco,     v=>v<1.5, '>1,5×'],
-    ['Dívida Líq. bi',   EX.divida_liq,  v=>v>20,  '<20bi'],
-  ].forEach(([n,d,isBad,ref])=>{
-    const tr=document.createElement('tr');
-    const cells=d.map(v=>{
-      const cls=isBad(v)?'nr':'ng';
-      return`<td class="${cls}">${typeof v==='number'&&v>0?'+':''}${typeof v==='number'?v.toFixed(2):v}</td>`;
-    });
-    tr.innerHTML=`<td class="lbl">${n}</td>${cells.join('')}<td style="color:#aaa;font-size:10px">${ref}</td>`;
-    tb.appendChild(tr);
-  });
-  el.appendChild(tb);
-})();
-
-// ════════════════════════════════════════════════════════════════════════
-// SOLVÊNCIA
-// ════════════════════════════════════════════════════════════════════════
-document.getElementById('kv_sg').textContent = EX.solv_geral[3].toFixed(3)+'×';
-document.getElementById('kv_pt').textContent = EX.idx_insolv[3].toFixed(3)+'×';
-document.getElementById('kv_ds').textContent = EX.dscr[3].toFixed(3)+'×';
-document.getElementById('kv_sc').textContent = EX.sust_capex[3].toFixed(3)+'×';
-document.getElementById('kv_ra').textContent = EX.roa[3].toFixed(2)+'%';
-
-(function(){
-  const el=document.getElementById('cs_solv');
-  if(!el)return;
-  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
-    {data:EX.solv_geral, borderColor:'#1d9e75',borderWidth:2.5,fill:true,backgroundColor:'rgba(29,158,117,.07)',tension:.4,pointRadius:5,
-      pointBackgroundColor:EX.solv_geral.map(v=>v<0.5?'#8b0000':v<0.7?'#e24b4a':'#1d9e75')},
-    {data:EX.idx_insolv, borderColor:'#e24b4a',borderWidth:2.5,fill:true,backgroundColor:'rgba(226,75,74,.06)',tension:.4,pointRadius:5,
-      pointBackgroundColor:EX.idx_insolv.map(v=>v>1?'#8b0000':'#e24b4a')},
-    {data:[1,1,1,1],borderColor:'rgba(239,159,39,.7)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(2)+'×'},min:0.3,max:1.2}}}});
-})();
-
-(function(){
-  const el=document.getElementById('cs_dscr');
-  if(!el)return;
-  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
-    {data:EX.dscr,       borderColor:'#9b87f5',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,
-      pointBackgroundColor:EX.dscr.map(v=>v<0.5?'#8b0000':v<1?'#e24b4a':v<1.2?'#ef9f27':'#9b87f5')},
-    {data:EX.sust_capex, borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.4,pointRadius:4},
-    {data:[1,1,1,1],borderColor:'rgba(226,75,74,.5)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
-    {data:[1.2,1.2,1.2,1.2],borderColor:'rgba(155,135,245,.35)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(2)+'×'},min:0,max:1.5}}}});
-})();
-
-(function(){
-  const el=document.getElementById('cs_prazo');
-  if(!el)return;
-  const data=EX.prazo_ext;
-  new Chart(el,{type:'bar',data:{labels:AN4,datasets:[{
-    data:data.map(v=>v||0),
-    backgroundColor:data.map(v=>v===null?'#aaa':v>5?'#e24b4a':v>2?'#ef9f27':'#1d9e75'),
-    borderRadius:5,barPercentage:.55
-  }]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(1)+' a'},min:0,max:11}}}});
-})();
-
-(function(){
-  const el=document.getElementById('cs_roa');
-  if(!el)return;
-  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
-    {data:EX.roa, borderColor:'#1d9e75',borderWidth:2.5,fill:true,
-      backgroundColor:ctx=>{ const g=el.getContext('2d').createLinearGradient(0,0,0,200);g.addColorStop(0,'rgba(29,158,117,.1)');g.addColorStop(1,'rgba(29,158,117,0)');return g;},
-      tension:.4,pointRadius:5,pointBackgroundColor:EX.roa.map(v=>v<0?'#e24b4a':'#1d9e75')},
-    {data:[0,0,0,0],borderColor:'rgba(226,75,74,.4)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
-            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:v=>v.toFixed(1)+'%'}}}}});
-})();
-
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#1a1a18;font-size:13px}
@@ -613,64 +174,33 @@ tr:hover td{background:#fafaf7}
   </div>
   <div class="ins"><strong>Paradoxo operacional:</strong> receita crescendo +20,5% com FCO positivo em todos os anos. A empresa não quebrou por falta de vendas. Quebrou por capex de R$ 52 bi em 4 anos + R$ 12,1 bi de juros em 2024/25 + impairment E2G de R$ 11,1 bi.</div>
 
-  <!-- ── SUB-ABAS DENTRO DO FINANCEIRO ──────────────────────────────── -->
-  <div style="border-top:2px solid #e0dfd8;margin:18px 0 14px;"></div>
-  
-  <!-- Sub-nav -->
-  <div class="stabs" id="fin-subtabs" style="margin-bottom:14px;border-bottom:1px solid #e0dfd8">
+  <div style="border-top:2px solid #e0dfd8;margin:20px 0 16px"></div>
+  <div class="stabs" id="fin-subtabs" style="border-bottom:1px solid #e0dfd8;margin-bottom:14px">
     <button class="stab on" onclick="fintab('horiz',this)">Análise Horizontal</button>
-    <button class="stab" onclick="fintab('vert',this)">Análise Vertical</button>
-    <button class="stab" onclick="fintab('liq',this)">Liquidez</button>
-    <button class="stab" onclick="fintab('endiv',this)">Endividamento</button>
-    <button class="stab" onclick="fintab('solv',this)">Solvência</button>
+    <button class="stab"    onclick="fintab('vert',this)">Análise Vertical</button>
+    <button class="stab"    onclick="fintab('liq',this)">Liquidez</button>
+    <button class="stab"    onclick="fintab('endiv',this)">Endividamento</button>
+    <button class="stab"    onclick="fintab('solv',this)">Solvência</button>
   </div>
 
-  <!-- ── HORIZONTAL ──────────────────────────────────────────────────── -->
   <div id="fin-horiz" class="sp on">
     <div class="krow">
       <div class="kpi g"><div class="kl">Receita acumulada</div><div class="kv g">+20,5%</div><div class="ks">+R$33bi em 4 anos</div></div>
       <div class="kpi r"><div class="kl">Lucro liq. acumulado</div><div class="kv r">−919%</div><div class="ks">+R$2,1 → −R$17,2 bi</div></div>
       <div class="kpi r"><div class="kl">Dívida acumulada</div><div class="kv r">+280%</div><div class="ks">R$18,4 → R$70 bi</div></div>
-      <div class="kpi r"><div class="kl">Juros pagos acumulado</div><div class="kv r">+256%</div><div class="ks">3,5× mais rápido que receita</div></div>
-      <div class="kpi r"><div class="kl">Pass. circ. acumulado</div><div class="kv r">+119%</div><div class="ks">Mais que dobrou em CP</div></div>
+      <div class="kpi r"><div class="kl">Juros acumulado</div><div class="kv r">+256%</div><div class="ks">3,5× mais rápido que receita</div></div>
+      <div class="kpi r"><div class="kl">Pass. circ. acumulado</div><div class="kv r">+119%</div><div class="ks">Mais que dobrou</div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">Variação % Período a Período — DRE</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#1d9e75"></span>Receita</span>
-          <span class="li"><span class="sq" style="background:#ef9f27"></span>EBITDA</span>
-          <span class="li"><span class="sq" style="background:#9b87f5"></span>EBIT</span>
-          <span class="li"><span class="sq" style="background:#e24b4a"></span>Lucro liq.</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="ch_dre"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="ch">Variação Acumulada — base 2021/22 = 0%</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#1d9e75"></span>Receita</span>
-          <span class="li"><span class="sq" style="background:#e24b4a"></span>Dívida bruta</span>
-          <span class="li"><span class="sq" style="background:#9b87f5"></span>Juros pagos</span>
-          <span class="li"><span class="sq" style="background:#ef9f27"></span>FCO</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="ch_acum"></canvas></div>
-      </div>
+      <div class="card"><div class="ch">Variação % Período a Período — DRE</div><div class="leg"><span class="li"><span class="sq" style="background:#1d9e75"></span>Receita</span><span class="li"><span class="sq" style="background:#ef9f27"></span>EBITDA</span><span class="li"><span class="sq" style="background:#9b87f5"></span>EBIT</span><span class="li"><span class="sq" style="background:#e24b4a"></span>Lucro liq.</span></div><div class="cw" style="height:215px"><canvas id="ch_dre"></canvas></div></div>
+      <div class="card"><div class="ch">Variação Acumulada — base 2021/22 = 0%</div><div class="leg"><span class="li"><span class="sq" style="background:#1d9e75"></span>Receita</span><span class="li"><span class="sq" style="background:#e24b4a"></span>Dívida bruta</span><span class="li"><span class="sq" style="background:#9b87f5"></span>Juros pagos</span><span class="li"><span class="sq" style="background:#ef9f27"></span>FCO</span></div><div class="cw" style="height:215px"><canvas id="ch_acum"></canvas></div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">Tabela Horizontal — DRE (Δ% período a período)</div>
-        <table id="tbl_hdre" style="margin-bottom:8px"></table>
-        <div class="ins">Receita cresceu em todos os períodos, mas lucro colapsou −919%. Juros cresceram 3,5× mais rápido que a receita.</div>
-      </div>
-      <div class="card">
-        <div class="ch">Tabela Horizontal — Balanço (Δ% período a período)</div>
-        <table id="tbl_hbp" style="margin-bottom:8px"></table>
-        <div class="ins">Dívida cresceu +280% em 4 anos; passivo circulante +119%. PL: positivo → negativo — variação calculada como variação absoluta.</div>
-      </div>
+      <div class="card"><div class="ch">Tabela — DRE (Δ% período a período)</div><table id="tbl_hdre" style="margin-bottom:8px"></table><div class="ins">Receita cresceu em todos os períodos, mas lucro colapsou −919%. Juros cresceram 3,5× mais rápido que a receita.</div></div>
+      <div class="card"><div class="ch">Tabela — Balanço (Δ% período a período)</div><table id="tbl_hbp" style="margin-bottom:8px"></table><div class="ins">Dívida +280% em 4 anos; passivo circulante +119%.</div></div>
     </div>
   </div>
 
-  <!-- ── VERTICAL ────────────────────────────────────────────────────── -->
   <div id="fin-vert" class="sp">
     <div class="krow">
       <div class="kpi a"><div class="kl">Margem bruta 2024/25</div><div class="kv a">8,9%</div><div class="ks">Era 12,4% em 2021/22</div></div>
@@ -680,167 +210,66 @@ tr:hover td{background:#fafaf7}
       <div class="kpi r"><div class="kl">PL / Ativo Total</div><div class="kv r">−3,3%</div><div class="ks">Era +27,7% em 2021/22</div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">Análise Vertical DRE — % da Receita Líquida</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#1d9e75"></span>Mg. Bruta</span>
-          <span class="li"><span class="sq" style="background:#ef9f27"></span>EBITDA %</span>
-          <span class="li"><span class="sq" style="background:#9b87f5"></span>EBIT %</span>
-          <span class="li"><span class="sq" style="background:#e24b4a"></span>Mg. Líq.</span>
-          <span class="li"><span class="sq" style="background:#378add"></span>Res. Fin. %</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="cv_dre"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="ch">Análise Vertical Balanço — % do Ativo Total</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#1d9e75"></span>Caixa/AT</span>
-          <span class="li"><span class="sq" style="background:#e24b4a"></span>Dívida/AT</span>
-          <span class="li"><span class="sq" style="background:#9b87f5"></span>PL/AT</span>
-          <span class="li"><span class="sq" style="background:#ef9f27"></span>Pass.Circ/AT</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="cv_bp"></canvas></div>
-      </div>
+      <div class="card"><div class="ch">Vertical DRE — % da Receita Líquida</div><div class="leg"><span class="li"><span class="sq" style="background:#1d9e75"></span>Mg. Bruta</span><span class="li"><span class="sq" style="background:#ef9f27"></span>EBITDA %</span><span class="li"><span class="sq" style="background:#9b87f5"></span>EBIT %</span><span class="li"><span class="sq" style="background:#e24b4a"></span>Mg. Líq.</span><span class="li"><span class="sq" style="background:#378add"></span>Res. Fin. %</span></div><div class="cw" style="height:215px"><canvas id="cv_dre"></canvas></div></div>
+      <div class="card"><div class="ch">Vertical Balanço — % do Ativo Total</div><div class="leg"><span class="li"><span class="sq" style="background:#1d9e75"></span>Caixa/AT</span><span class="li"><span class="sq" style="background:#e24b4a"></span>Dívida/AT</span><span class="li"><span class="sq" style="background:#9b87f5"></span>PL/AT</span><span class="li"><span class="sq" style="background:#ef9f27"></span>Pass.Circ./AT</span></div><div class="cw" style="height:215px"><canvas id="cv_bp"></canvas></div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">Tabela Vertical — DRE (% da Receita)</div>
-        <table id="tbl_vdre" style="margin-bottom:8px"></table>
-      </div>
-      <div class="card">
-        <div class="ch">Tabela Vertical — Balanço (% do AT)</div>
-        <table id="tbl_vbp" style="margin-bottom:8px"></table>
-        <div class="ins">Dívida/AT: 27,3%→88,5%. PL/AT: +27,7%→−3,3%. O balanço de 2024/25 é quase inteiramente dívida — menos de 12% é financiado por capital próprio.</div>
-      </div>
+      <div class="card"><div class="ch">Tabela Vertical — DRE (% da Receita)</div><table id="tbl_vdre" style="margin-bottom:8px"></table></div>
+      <div class="card"><div class="ch">Tabela Vertical — Balanço (% do AT)</div><table id="tbl_vbp" style="margin-bottom:8px"></table><div class="ins">Dívida/AT: 27,3%→88,5%. PL/AT: +27,7%→−3,3%.</div></div>
     </div>
   </div>
 
-  <!-- ── LIQUIDEZ ────────────────────────────────────────────────────── -->
   <div id="fin-liq" class="sp">
     <div class="krow">
       <div class="kpi r"><div class="kl">Liq. Corrente 2024/25</div><div class="kv r" id="kv_lc">—</div><div class="ks">Ref. &gt;1,5× (mín. 1,0×)</div></div>
       <div class="kpi r"><div class="kl">Liq. Seca 2024/25</div><div class="kv r" id="kv_ls">—</div><div class="ks">Ref. &gt;1,0×</div></div>
-      <div class="kpi a"><div class="kl">Liq. Imediata 2024/25</div><div class="kv a" id="kv_li">—</div><div class="ks">Aparente OK — paradoxo</div></div>
+      <div class="kpi a"><div class="kl">Liq. Imediata 2024/25</div><div class="kv a" id="kv_li">—</div><div class="ks">Paradoxo: caixa cresce</div></div>
       <div class="kpi r"><div class="kl">Liq. Geral 2024/25</div><div class="kv r" id="kv_lg">—</div><div class="ks">Ref. &gt;1,0×</div></div>
       <div class="kpi r"><div class="kl">CGL 2024/25</div><div class="kv r" id="kv_cgl">—</div><div class="ks">Negativo desde 2023/24</div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">4 Índices de Liquidez — Evolução (×)</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#1d9e75"></span>Corrente</span>
-          <span class="li"><span class="sq" style="background:#ef9f27"></span>Seca</span>
-          <span class="li"><span class="sq" style="background:#9b87f5"></span>Imediata</span>
-          <span class="li"><span class="sq" style="background:#378add"></span>Geral</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="cl_idx"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="ch">Capital de Giro Líquido — AC vs PC (R$ bi)</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#1d9e75"></span>Ativo Circulante</span>
-          <span class="li"><span class="sq" style="background:#e24b4a"></span>Passivo Circulante</span>
-          <span class="li"><span class="sq" style="background:#9b87f5"></span>CGL (linha)</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="cl_cgl"></canvas></div>
-      </div>
+      <div class="card"><div class="ch">4 Índices de Liquidez — Evolução (×)</div><div class="leg"><span class="li"><span class="sq" style="background:#1d9e75"></span>Corrente</span><span class="li"><span class="sq" style="background:#ef9f27"></span>Seca</span><span class="li"><span class="sq" style="background:#9b87f5"></span>Imediata</span><span class="li"><span class="sq" style="background:#378add"></span>Geral</span></div><div class="cw" style="height:215px"><canvas id="cl_idx"></canvas></div></div>
+      <div class="card"><div class="ch">Capital de Giro Líquido — AC vs PC (R$ bi)</div><div class="leg"><span class="li"><span class="sq" style="background:#1d9e75"></span>Ativo Circulante</span><span class="li"><span class="sq" style="background:#e24b4a"></span>Passivo Circulante</span><span class="li"><span class="sq" style="background:#9b87f5"></span>CGL (linha)</span></div><div class="cw" style="height:215px"><canvas id="cl_cgl"></canvas></div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">Semaforização por período (ADEQUADO / ATENÇÃO / ALERTA / CRÍTICO)</div>
-        <div id="liq_semaforo" style="padding:10px 14px 14px"></div>
-      </div>
-      <div class="card">
-        <div class="ch">Paradoxo: Caixa cresce, Liquidez Imediata cai</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#1d9e75"></span>Caixa R$ bi (esq.)</span>
-          <span class="li"><span class="sq" style="background:#e24b4a"></span>Liq. Imediata × (dir.)</span>
-        </div>
-        <div class="cw" style="height:190px"><canvas id="cl_paradox"></canvas></div>
-        <div class="ins">Caixa +66% mas liq. imediata −24%. Passivo circulante cresceu 2,2× mais rápido que o caixa.</div>
-      </div>
+      <div class="card"><div class="ch">Semaforização por período (ADEQUADO / ATENÇÃO / ALERTA / CRÍTICO)</div><div id="liq_semaforo" style="padding:10px 14px 14px"></div></div>
+      <div class="card"><div class="ch">Paradoxo: Caixa cresce, Liquidez Imediata cai</div><div class="leg"><span class="li"><span class="sq" style="background:#1d9e75"></span>Caixa R$ bi (esq.)</span><span class="li"><span class="sq" style="background:#e24b4a"></span>Liq. Imediata × (dir.)</span></div><div class="cw" style="height:190px"><canvas id="cl_paradox"></canvas></div><div class="ins">Caixa +66%, liq. imediata −24%. Passivo circulante cresceu 2,2× mais rápido.</div></div>
     </div>
   </div>
 
-  <!-- ── ENDIVIDAMENTO ────────────────────────────────────────────────── -->
   <div id="fin-endiv" class="sp">
     <div class="krow">
-      <div class="kpi r"><div class="kl">End. Geral 2024/25</div><div class="kv r" id="kv_eg">—</div><div class="ks">Ref. saudável &lt;50%</div></div>
+      <div class="kpi r"><div class="kl">End. Geral 2024/25</div><div class="kv r" id="kv_eg">—</div><div class="ks">Ref. &lt;50%</div></div>
       <div class="kpi r"><div class="kl">End. Oneroso (Div/AT)</div><div class="kv r" id="kv_eo">—</div><div class="ks">Ref. &lt;30%</div></div>
-      <div class="kpi r"><div class="kl">Dívida Líq./EBITDA</div><div class="kv r" id="kv_de">—</div><div class="ks">Limit. covenant &lt;4,5×</div></div>
-      <div class="kpi r"><div class="kl">Cobertura Juros (EBIT)</div><div class="kv r" id="kv_ce">—</div><div class="ks">Mínimo &gt;2,0×</div></div>
-      <div class="kpi r"><div class="kl">Cobertura Juros (FCO)</div><div class="kv r" id="kv_cf">—</div><div class="ks">Mínimo &gt;1,5×</div></div>
+      <div class="kpi r"><div class="kl">Dívida Líq./EBITDA</div><div class="kv r" id="kv_de">—</div><div class="ks">Covenant típico &lt;4,5×</div></div>
+      <div class="kpi r"><div class="kl">Cobertura Juros EBIT</div><div class="kv r" id="kv_ce">—</div><div class="ks">Mínimo &gt;2,0×</div></div>
+      <div class="kpi r"><div class="kl">Cobertura Juros FCO</div><div class="kv r" id="kv_cf">—</div><div class="ks">Mínimo &gt;1,5×</div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">End. Geral e Oneroso (%) + DL/EBITDA × (eixo dir.)</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#e24b4a"></span>End. Geral %</span>
-          <span class="li"><span class="sq" style="background:#ef9f27"></span>End. Oneroso %</span>
-          <span class="li"><span class="sq" style="background:#9b87f5"></span>DL/EBITDA × (dir.)</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="ce_geral"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="ch">Cobertura de Juros — EBIT vs FCO (×)</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#9b87f5"></span>Cobertura EBIT ×</span>
-          <span class="li"><span class="sq" style="background:#1d9e75"></span>Cobertura FCO ×</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="ce_cob"></canvas></div>
-      </div>
+      <div class="card"><div class="ch">End. Geral e Oneroso (%) + DL/EBITDA × (eixo dir.)</div><div class="leg"><span class="li"><span class="sq" style="background:#e24b4a"></span>End. Geral %</span><span class="li"><span class="sq" style="background:#ef9f27"></span>End. Oneroso %</span><span class="li"><span class="sq" style="background:#9b87f5"></span>DL/EBITDA × (dir.)</span></div><div class="cw" style="height:215px"><canvas id="ce_geral"></canvas></div></div>
+      <div class="card"><div class="ch">Cobertura de Juros — EBIT vs FCO (×)</div><div class="leg"><span class="li"><span class="sq" style="background:#9b87f5"></span>Cob. EBIT ×</span><span class="li"><span class="sq" style="background:#1d9e75"></span>Cob. FCO ×</span></div><div class="cw" style="height:215px"><canvas id="ce_cob"></canvas></div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">Composição da Dívida — Curto vs Longo Prazo (%)</div>
-        <div class="cw" style="height:200px"><canvas id="ce_comp"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="ch">Tabela de Endividamento — todos os índices</div>
-        <table id="tbl_endiv" style="margin-bottom:8px"></table>
-        <div class="ins"><strong>Ponto de inflexão 2022/23:</strong> DL/EBITDA salta de 0,4× para 1,4×. Em 2024/25 atinge 5,3× — acima do limite típico de covenant de 4,5×. Mercado de crédito fechado.</div>
-      </div>
+      <div class="card"><div class="ch">Composição da Dívida — Curto vs Longo Prazo (%)</div><div class="cw" style="height:200px"><canvas id="ce_comp"></canvas></div></div>
+      <div class="card"><div class="ch">Tabela de Endividamento</div><table id="tbl_endiv" style="margin-bottom:8px"></table><div class="ins"><strong>Ponto de inflexão 2022/23:</strong> DL/EBITDA salta de 0,4× para 1,4×. Em 2024/25 atinge 5,3× — acima do covenant típico de 4,5×.</div></div>
     </div>
   </div>
 
-  <!-- ── SOLVÊNCIA ────────────────────────────────────────────────────── -->
   <div id="fin-solv" class="sp">
     <div class="krow">
-      <div class="kpi r"><div class="kl">Solvência Geral 2024/25</div><div class="kv r" id="kv_sg">—</div><div class="ks">Mínimo &gt;1,0×</div></div>
-      <div class="kpi r"><div class="kl">PT/AT (insolvência)</div><div class="kv r" id="kv_pt">—</div><div class="ks">&gt;1,0 = insolvente técnico</div></div>
+      <div class="kpi r"><div class="kl">Solvência Geral 2024/25</div><div class="kv r" id="kv_sg">—</div><div class="ks">Mín. &gt;1,0×</div></div>
+      <div class="kpi r"><div class="kl">PT/AT (insolvência)</div><div class="kv r" id="kv_pt">—</div><div class="ks">&gt;1,0× = insolvente técnico</div></div>
       <div class="kpi r"><div class="kl">DSCR 2024/25</div><div class="kv r" id="kv_ds">—</div><div class="ks">Ref. &gt;1,2×</div></div>
-      <div class="kpi r"><div class="kl">FCO / Capex 2024/25</div><div class="kv r" id="kv_sc">—</div><div class="ks">Ref. &gt;1,0× (autofinancia)</div></div>
+      <div class="kpi r"><div class="kl">FCO / Capex 2024/25</div><div class="kv r" id="kv_sc">—</div><div class="ks">Ref. &gt;1,0×</div></div>
       <div class="kpi r"><div class="kl">ROA 2024/25</div><div class="kv r" id="kv_ra">—</div><div class="ks">Era +3,1% em 2021/22</div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">Solvência Geral vs PT/AT — cruzamento do limiar 1,0×</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#1d9e75"></span>Solvência Geral (↑ melhor)</span>
-          <span class="li"><span class="sq" style="background:#e24b4a"></span>PT/AT (↓ melhor, &gt;1,0 = insolvente)</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="cs_solv"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="ch">DSCR e FCO/Capex — capacidade de pagamento do serviço da dívida</div>
-        <div class="leg">
-          <span class="li"><span class="sq" style="background:#9b87f5"></span>DSCR (FCO/Juros+Amort.)</span>
-          <span class="li"><span class="sq" style="background:#ef9f27"></span>FCO/Capex</span>
-        </div>
-        <div class="cw" style="height:215px"><canvas id="cs_dscr"></canvas></div>
-      </div>
+      <div class="card"><div class="ch">Solvência Geral vs PT/AT — cruzamento do limiar 1,0×</div><div class="leg"><span class="li"><span class="sq" style="background:#1d9e75"></span>Solvência Geral (↑ melhor)</span><span class="li"><span class="sq" style="background:#e24b4a"></span>PT/AT (&gt;1,0 = insolvente)</span></div><div class="cw" style="height:215px"><canvas id="cs_solv"></canvas></div></div>
+      <div class="card"><div class="ch">DSCR e FCO/Capex — capacidade de pagamento</div><div class="leg"><span class="li"><span class="sq" style="background:#9b87f5"></span>DSCR (FCO/Juros+Amort.)</span><span class="li"><span class="sq" style="background:#ef9f27"></span>FCO/Capex</span></div><div class="cw" style="height:215px"><canvas id="cs_dscr"></canvas></div></div>
     </div>
     <div class="g2">
-      <div class="card">
-        <div class="ch">Prazo estimado de extinção da dívida líquida (anos a FCO constante)</div>
-        <div class="cw" style="height:200px"><canvas id="cs_prazo"></canvas></div>
-        <div class="ins">2024/25: seriam necessários <strong>8,6 anos</strong> de FCO integral para quitar a dívida líquida — com FCO decrescente. RE foi matematicamente inevitável.</div>
-      </div>
-      <div class="card">
-        <div class="ch">ROA — Retorno sobre o Ativo Total (%)</div>
-        <div class="cw" style="height:200px"><canvas id="cs_roa"></canvas></div>
-        <div class="ins">ROA: +3,1% → −21,7%. O ativo não gera mais retorno. Cada real de ativo destrói valor em 2024/25.</div>
-      </div>
+      <div class="card"><div class="ch">Prazo de extinção da dívida líquida (anos, FCO constante)</div><div class="cw" style="height:200px"><canvas id="cs_prazo"></canvas></div><div class="ins">2024/25: seriam necessários <strong>8,6 anos</strong> de FCO integral para quitar a dívida líquida. Com FCO decrescente, RE foi matematicamente inevitável.</div></div>
+      <div class="card"><div class="ch">ROA — Retorno sobre o Ativo Total (%)</div><div class="cw" style="height:200px"><canvas id="cs_roa"></canvas></div><div class="ins">ROA: +3,1% → −21,7%. Cada real de ativo destrói valor em 2024/25.</div></div>
     </div>
   </div>
 
@@ -1771,7 +1200,7 @@ const PY = {
     }
   ]
 };
-const EX = {"h_receita": [null, 9.32, 4.55, 5.43], "h_lucrobruto": [null, 4.0, -9.62, -7.98], "h_ebitda": [null, -2.82, -12.32, -22.31], "h_ebit": [null, -28.85, -170.27, -280.77], "h_resfinanceiro": [null, -85.71, -75.0, -53.85], "h_lucroliq": [null, -33.33, -321.43, -454.84], "h_fco": [null, 19.44, -25.58, -9.38], "h_capex": [null, 30.56, -7.09, 8.4], "h_juros": [null, 70.59, 58.62, 31.52], "h_divida": [null, 101.63, 40.16, 34.62], "h_passivoc": [null, 38.51, 27.35, 23.94], "h_pl": [null, -22.46, -18.62, -122.03], "h_atotal": [null, 11.57, 4.52, 0.64], "v_lucrobruto": [0.1242, 0.1182, 0.1022, 0.0892], "v_ebitda": [0.0882, 0.0784, 0.0658, 0.0485], "v_ebit": [0.0323, 0.021, -0.0141, -0.051], "v_resfinanceiro": [-0.0174, -0.0295, -0.0495, -0.0722], "v_lucroliq": [0.013, 0.008, -0.0169, -0.0887], "v_acirc": [0.2893, 0.3205, 0.3282, 0.33], "v_caixa": [0.1795, 0.2367, 0.2405, 0.2541], "v_estoques": [0.0564, 0.0558, 0.0572, 0.0582], "v_ancipcirc": [0.7107, 0.6795, 0.6718, 0.67], "v_imob": [0.4169, 0.4189, 0.4249, 0.4298], "v_intang": [0.1825, 0.1675, 0.145, 0.1416], "v_passivoc": [0.2389, 0.2965, 0.3613, 0.445], "v_passivonc": [0.4837, 0.5106, 0.4885, 0.5879], "v_divida": [0.273, 0.4934, 0.6616, 0.885], "v_pl": [0.2775, 0.1928, 0.1501, -0.0329], "liq_corrente": [1.2112, 1.0807, 0.9084, 0.7415], "liq_seca": [0.9752, 0.8924, 0.75, 0.6108], "liq_imediata": [0.7516, 0.7982, 0.6655, 0.571], "liq_geral": [0.5544, 0.5124, 0.4611, 0.4149], "cgl": [3.4, 1.8, -2.6, -9.1], "end_geral": [0.7225, 0.8072, 0.8499, 1.0329], "comp_end": [0.3306, 0.3674, 0.4252, 0.4308], "dl_ebitda": [0.444, 1.399, 2.736, 5.309], "cob_ebit": [1.529, 0.638, -0.283, -0.818], "cob_fco": [2.118, 1.483, 0.696, 0.479], "end_oneroso": [0.273, 0.4934, 0.6616, 0.885], "divida_liq": [6.3, 19.3, 33.1, 49.9], "solv_geral": [0.5544, 0.5124, 0.4611, 0.4149], "idx_insolv": [0.723, 0.807, 0.85, 1.033], "dscr": [1.169, 0.757, 0.376, 0.257], "sust_capex": [0.667, 0.61, 0.489, 0.408], "roa": [3.116, 1.862, -3.944, -21.745], "prazo_ext": [0.87, 2.24, 5.17, 8.6], "pl_serie": [18.7, 14.5, 11.8, -2.6], "ativo_circ": [19.5, 24.1, 25.8, 26.1], "passivo_circ": [16.1, 22.3, 28.4, 35.2], "caixa": [12.1, 17.8, 18.9, 20.1], "receita_base": [161.0, 176.0, 184.0, 194.0], "divida_bruta": [18.4, 37.1, 52.0, 70.0], "juros_pagos": [3.4, 5.8, 9.2, 12.1], "fco_base": [7.2, 8.6, 6.4, 5.8], "capex_base": [10.8, 14.1, 13.1, 14.2], "ebit_base": [5.2, 3.7, -2.6, -9.9], "lucro_liq_base": [2.1, 1.4, -3.1, -17.2], "ebitda_base": [14.2, 13.8, 12.1, 9.4]};
+const EX = {"h_receita": [null, 9.32, 4.55, 5.43], "h_lucrobruto": [null, 4.0, -9.62, -7.98], "h_ebitda": [null, -2.82, -12.32, -22.31], "h_ebit": [null, -28.85, -170.27, -280.77], "h_resfinanceiro": [null, -85.71, -75.0, -53.85], "h_lucroliq": [null, -33.33, -321.43, -454.84], "h_fco": [null, 19.44, -25.58, -9.38], "h_capex": [null, 30.56, -7.09, 8.4], "h_juros": [null, 70.59, 58.62, 31.52], "h_divida": [null, 101.63, 40.16, 34.62], "h_passivoc": [null, 38.51, 27.35, 23.94], "h_pl": [null, -22.46, -18.62, -122.03], "h_atotal": [null, 11.57, 4.52, 0.64], "v_lucrobruto": [12.422, 11.818, 10.217, 8.918], "v_ebitda": [8.82, 7.841, 6.576, 4.845], "v_ebit": [3.23, 2.102, -1.413, -5.103], "v_resfinanceiro": [-1.739, -2.955, -4.946, -7.216], "v_lucroliq": [1.304, 0.795, -1.685, -8.866], "v_acirc": [28.932, 32.048, 32.824, 32.996], "v_caixa": [17.953, 23.67, 24.046, 25.411], "v_estoques": [5.638, 5.585, 5.725, 5.815], "v_ancipcirc": [71.068, 67.952, 67.176, 67.004], "v_imob": [41.691, 41.888, 42.494, 42.984], "v_intang": [18.249, 16.755, 14.504, 14.159], "v_passivoc": [23.887, 29.654, 36.132, 44.501], "v_passivonc": [48.368, 51.064, 48.855, 58.786], "v_divida": [27.3, 49.335, 66.158, 88.496], "v_pl": [27.745, 19.282, 15.013, -3.287], "liq_corrente": [1.2112, 1.0807, 0.9085, 0.7415], "liq_seca": [0.9752, 0.8924, 0.75, 0.6108], "liq_imediata": [0.7516, 0.7982, 0.6655, 0.571], "liq_geral": [0.5544, 0.5124, 0.4611, 0.4149], "cgl": [3.4, 1.8, -2.6, -9.1], "end_geral": [72.255, 80.718, 84.987, 103.287], "comp_end": [33.06, 36.738, 42.515, 43.084], "dl_ebitda": [0.444, 1.399, 2.736, 5.309], "cob_ebit": [1.529, 0.638, -0.283, -0.818], "cob_fco": [2.118, 1.483, 0.696, 0.479], "end_oneroso": [27.3, 49.335, 66.158, 88.496], "divida_liq": [6.3, 19.3, 33.1, 49.9], "solv_geral": [0.5544, 0.5124, 0.4611, 0.4149], "idx_insolv": [0.7226, 0.8072, 0.8499, 1.0329], "dscr": [1.169, 0.757, 0.376, 0.257], "sust_capex": [0.667, 0.61, 0.489, 0.408], "roa": [3.116, 1.862, -3.944, -21.745], "prazo_ext": [0.87, 2.24, 5.17, 8.6], "pl_serie": [18.7, 14.5, 11.8, -2.6], "ativo_circ": [19.5, 24.1, 25.8, 26.1], "passivo_circ": [16.1, 22.3, 28.4, 35.2], "caixa": [12.1, 17.8, 18.9, 20.1], "receita_base": [161.0, 176.0, 184.0, 194.0], "divida_bruta": [18.4, 37.1, 52.0, 70.0], "juros_pagos": [3.4, 5.8, 9.2, 12.1], "fco_base": [7.2, 8.6, 6.4, 5.8], "capex_base": [10.8, 14.1, 13.1, 14.2], "ebit_base": [5.2, 3.7, -2.6, -9.9], "lucro_liq_base": [2.1, 1.4, -3.1, -17.2], "ebitda_base": [14.2, 13.8, 12.1, 9.4]};
 
 
 // ── ATALHOS ───────────────────────────────────────────────────────────────────
@@ -2152,6 +1581,356 @@ function stab(group, id, btn) {
   document.getElementById(group+'-'+id).classList.add('on');
   btn.classList.add('on');
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// SUB-ABAS FINANCEIRO
+// ══════════════════════════════════════════════════════════════
+function fintab(id, btn) {
+  document.querySelectorAll('[id^="fin-"]').forEach(function(el){ el.classList.remove('on'); });
+  document.querySelectorAll('#fin-subtabs .stab').forEach(function(b){ b.classList.remove('on'); });
+  var el = document.getElementById('fin-'+id);
+  if(el){ el.classList.add('on'); }
+  if(btn){ btn.classList.add('on'); }
+}
+
+function acumPct(serie) {
+  var base = serie[0];
+  return serie.map(function(v){ return base !== 0 ? +((v - base) / Math.abs(base) * 100).toFixed(2) : 0; });
+}
+
+var AN4 = PY.AN;
+var AN3 = ['22/23 \u0394%','23/24 \u0394%','24/25 \u0394%'];
+
+// ── HORIZONTAL DRE ──
+(function(){
+  var el = document.getElementById('ch_dre');
+  if(!el) return;
+  new Chart(el, {
+    type:'bar',
+    data:{ labels: AN3, datasets:[
+      {data: EX.h_receita.slice(1),   backgroundColor:'rgba(29,158,117,.75)', borderRadius:4, barPercentage:.22},
+      {data: EX.h_ebitda.slice(1),    backgroundColor:'rgba(239,159,39,.75)', borderRadius:4, barPercentage:.22},
+      {data: EX.h_ebit.slice(1),      backgroundColor:'rgba(155,135,245,.75)',borderRadius:4, barPercentage:.22},
+      {data: EX.h_lucroliq.slice(1),  backgroundColor: EX.h_lucroliq.slice(1).map(function(v){return v<0?'rgba(226,75,74,.85)':'rgba(29,158,117,.75)';}), borderRadius:4, barPercentage:.22},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
+              y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(1)+'%';}}}}}
+  });
+})();
+
+// ── HORIZONTAL ACUMULADO ──
+(function(){
+  var el = document.getElementById('ch_acum');
+  if(!el) return;
+  new Chart(el, {
+    type:'line',
+    data:{ labels: AN4, datasets:[
+      {data:acumPct(EX.receita_base), borderColor:'#1d9e75',borderWidth:2,fill:false,tension:.3,pointRadius:4},
+      {data:acumPct(EX.divida_bruta), borderColor:'#e24b4a',borderWidth:2.5,fill:false,tension:.3,pointRadius:4},
+      {data:acumPct(EX.juros_pagos),  borderColor:'#9b87f5',borderWidth:2,fill:false,tension:.3,pointRadius:4},
+      {data:acumPct(EX.fco_base),     borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.3,pointRadius:4},
+      {data:[0,0,0,0],borderColor:'rgba(0,0,0,.12)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
+              y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(0)+'%';}}}}}
+  });
+})();
+
+// ── TABELA HORIZONTAL DRE ──
+(function(){
+  var el=document.getElementById('tbl_hdre');
+  if(!el)return;
+  el.innerHTML='<thead><tr><th>Conta</th><th style="text-align:right">22/23</th><th style="text-align:right">23/24</th><th style="text-align:right">24/25</th><th style="text-align:right">Acum.</th></tr></thead>';
+  var tb=document.createElement('tbody');
+  var sMap={'Receita':EX.receita_base,'EBITDA':EX.ebitda_base,'EBIT':EX.ebit_base,'Lucro liq.':EX.lucro_liq_base,'FCO':EX.fco_base,'Capex':EX.capex_base,'Juros':EX.juros_pagos};
+  [['Receita',EX.h_receita,false],['EBITDA',EX.h_ebitda,true],['EBIT',EX.h_ebit,true],['Lucro liq.',EX.h_lucroliq,true],['FCO',EX.h_fco,true],['Capex',EX.h_capex,false],['Juros',EX.h_juros,true]].forEach(function(row){
+    var n=row[0],d=row[1],qr=row[2];
+    var s=sMap[n];
+    var acumStr='—';
+    if(s){var b=s[0],f=s[3];if(b!==0){var v=(f-b)/Math.abs(b)*100;acumStr=(v>0?'+':'')+v.toFixed(1)+'%';}}
+    var tr=document.createElement('tr');
+    var cells=d.slice(1).map(function(v){
+      if(v===null||v===undefined)return'<td class="n">—</td>';
+      var bad=qr?v<-5:false; var cls=bad?'nr':(!qr&&v>5)?'ng':'na';
+      return'<td class="'+cls+'">'+(v>0?'+':'')+v.toFixed(1)+'%</td>';
+    });
+    var ac=acumStr.startsWith('-')?'nr':acumStr.startsWith('+')?'ng':'n';
+    tr.innerHTML='<td class="lbl">'+n+'</td>'+cells.join('')+'<td class="'+ac+'">'+acumStr+'</td>';
+    tb.appendChild(tr);
+  });
+  el.appendChild(tb);
+})();
+
+// ── TABELA HORIZONTAL BALANÇO ──
+(function(){
+  var el=document.getElementById('tbl_hbp');
+  if(!el)return;
+  el.innerHTML='<thead><tr><th>Conta</th><th style="text-align:right">22/23</th><th style="text-align:right">23/24</th><th style="text-align:right">24/25</th></tr></thead>';
+  var tb=document.createElement('tbody');
+  [['Ativo total',EX.h_atotal,false],['Passivo circ.',EX.h_passivoc,true],['Dívida bruta',EX.h_divida,true],['PL',EX.h_pl,false]].forEach(function(row){
+    var n=row[0],d=row[1],bu=row[2];
+    if(!d)return;
+    var tr=document.createElement('tr');
+    var cells=d.slice(1).map(function(v){
+      if(v===null||v===undefined)return'<td class="n">—</td>';
+      var bad=bu?v>20:v<-30; var cls=bad?'nr':(bu&&v<0)?'ng':'na';
+      return'<td class="'+cls+'">'+(v>0?'+':'')+v.toFixed(1)+'%</td>';
+    });
+    tr.innerHTML='<td class="lbl">'+n+'</td>'+cells.join('');
+    tb.appendChild(tr);
+  });
+  el.appendChild(tb);
+})();
+
+// ── VERTICAL DRE ──
+(function(){
+  var el=document.getElementById('cv_dre');
+  if(!el)return;
+  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
+    {data:EX.v_lucrobruto,   borderColor:'#1d9e75',borderWidth:2,fill:false,tension:.4,pointRadius:4},
+    {data:EX.v_ebitda,       borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.4,pointRadius:4},
+    {data:EX.v_ebit,         borderColor:'#9b87f5',borderWidth:2,fill:false,tension:.4,pointRadius:4},
+    {data:EX.v_lucroliq,     borderColor:'#e24b4a',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,pointBackgroundColor:EX.v_lucroliq.map(function(v){return v<0?'#8b0000':'#e24b4a';})},
+    {data:EX.v_resfinanceiro,borderColor:'#378add',borderWidth:1.5,fill:false,tension:.4,pointRadius:3,borderDash:[4,3]},
+    {data:[0,0,0,0],borderColor:'rgba(0,0,0,.12)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(1)+'%';}}}}}});
+})();
+
+// ── VERTICAL BALANÇO ──
+(function(){
+  var el=document.getElementById('cv_bp');
+  if(!el)return;
+  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
+    {data:EX.v_caixa,   borderColor:'#1d9e75',borderWidth:2,fill:false,tension:.4,pointRadius:4},
+    {data:EX.v_divida,  borderColor:'#e24b4a',borderWidth:2.5,fill:false,tension:.4,pointRadius:5},
+    {data:EX.v_pl,      borderColor:'#9b87f5',borderWidth:2,fill:false,tension:.4,pointRadius:4,pointBackgroundColor:EX.v_pl.map(function(v){return v<0?'#8b0000':'#9b87f5';})},
+    {data:EX.v_passivoc,borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.4,pointRadius:4},
+    {data:[0,0,0,0],borderColor:'rgba(0,0,0,.12)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(1)+'%';}}}}}});
+})();
+
+// ── TABELA VERTICAL DRE ──
+(function(){
+  var el=document.getElementById('tbl_vdre');
+  if(!el)return;
+  el.innerHTML='<thead><tr><th>Conta</th>'+AN4.map(function(a){return'<th style="text-align:right">'+a+'</th>';}).join('')+'</tr></thead>';
+  var tb=document.createElement('tbody');
+  [['Mg. Bruta',EX.v_lucrobruto],['EBITDA %',EX.v_ebitda],['EBIT %',EX.v_ebit],['Res. Fin. %',EX.v_resfinanceiro],['Mg. Líquida',EX.v_lucroliq]].forEach(function(row){
+    var tr=document.createElement('tr');
+    var cells=row[1].map(function(v){var cls=v<0?'nr':v>8?'ng':'na';return'<td class="'+cls+'">'+(v>0?'+':'')+v.toFixed(2)+'%</td>';});
+    tr.innerHTML='<td class="lbl">'+row[0]+'</td>'+cells.join('');
+    tb.appendChild(tr);
+  });
+  el.appendChild(tb);
+})();
+
+// ── TABELA VERTICAL BALANÇO ──
+(function(){
+  var el=document.getElementById('tbl_vbp');
+  if(!el)return;
+  el.innerHTML='<thead><tr><th>Conta (%AT)</th>'+AN4.map(function(a){return'<th style="text-align:right">'+a+'</th>';}).join('')+'</tr></thead>';
+  var tb=document.createElement('tbody');
+  [['Caixa/AT',EX.v_caixa,false],['Estoques/AT',EX.v_estoques,false],['Imob./AT',EX.v_imob,false],['Dívida/AT',EX.v_divida,true],['Pass.Circ./AT',EX.v_passivoc,true],['PL/AT',EX.v_pl,true]].forEach(function(row){
+    var n=row[0],d=row[1],du=row[2];
+    var tr=document.createElement('tr');
+    var cells=d.map(function(v){var bad=du?v>60:v<0;var cls=bad?'nr':(du&&v<30)?'ng':'na';return'<td class="'+cls+'">'+(v>0?'+':'')+v.toFixed(2)+'%</td>';});
+    tr.innerHTML='<td class="lbl">'+n+'</td>'+cells.join('');
+    tb.appendChild(tr);
+  });
+  el.appendChild(tb);
+})();
+
+// ── LIQUIDEZ KPIs ──
+document.getElementById('kv_lc').textContent  = EX.liq_corrente[3].toFixed(3)+'\u00d7';
+document.getElementById('kv_ls').textContent  = EX.liq_seca[3].toFixed(3)+'\u00d7';
+document.getElementById('kv_li').textContent  = EX.liq_imediata[3].toFixed(3)+'\u00d7';
+document.getElementById('kv_lg').textContent  = EX.liq_geral[3].toFixed(3)+'\u00d7';
+document.getElementById('kv_cgl').textContent = 'R$'+EX.cgl[3].toFixed(1)+' bi';
+
+// ── LIQUIDEZ 4 ÍNDICES ──
+(function(){
+  var el=document.getElementById('cl_idx');
+  if(!el)return;
+  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
+    {data:EX.liq_corrente,borderColor:'#1d9e75',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,pointBackgroundColor:EX.liq_corrente.map(function(v){return v<1?'#8b0000':v<1.5?'#ef9f27':'#1d9e75';})},
+    {data:EX.liq_seca,    borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.4,pointRadius:4},
+    {data:EX.liq_imediata,borderColor:'#9b87f5',borderWidth:2,fill:false,tension:.4,pointRadius:4},
+    {data:EX.liq_geral,   borderColor:'#378add',borderWidth:2,fill:false,tension:.4,pointRadius:4},
+    {data:[1,1,1,1],borderColor:'rgba(226,75,74,.5)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
+    {data:[1.5,1.5,1.5,1.5],borderColor:'rgba(29,158,117,.3)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(2)+'\u00d7';}},min:0,max:1.7}}}});
+})();
+
+// ── CGL ──
+(function(){
+  var el=document.getElementById('cl_cgl');
+  if(!el)return;
+  new Chart(el,{type:'bar',data:{labels:AN4,datasets:[
+    {data:EX.ativo_circ,             backgroundColor:'rgba(29,158,117,.6)',borderRadius:3,barPercentage:.35,stack:'s'},
+    {data:EX.passivo_circ.map(function(v){return -v;}),backgroundColor:'rgba(226,75,74,.6)',borderRadius:3,barPercentage:.35,stack:'s'},
+    {data:EX.cgl,type:'line',borderColor:'#9b87f5',borderWidth:2.5,fill:false,tension:.3,pointRadius:5,pointBackgroundColor:EX.cgl.map(function(v){return v<0?'#8b0000':'#9b87f5';})},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{stacked:true,grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v+'bi';}}}}}});
+})();
+
+// ── SEMAFORIZAÇÃO ──
+(function(){
+  var el=document.getElementById('liq_semaforo');
+  if(!el)return;
+  var REFS={liq_corrente:{ok:1.5,atencao:1.0,critico:0.9},liq_seca:{ok:1.0,atencao:0.7,critico:0.5},liq_imediata:{ok:0.5,atencao:0.2,critico:0.1},liq_geral:{ok:1.0,atencao:0.7,critico:0.5}};
+  function sem(v,k){var r=REFS[k];return v>=r.ok?{l:'ADEQUADO',c:'#1d9e75'}:v>=r.atencao?{l:'ATEN\u00c7\u00c3O',c:'#ef9f27'}:v>=r.critico?{l:'ALERTA',c:'#e87c27'}:{l:'CR\u00cdTICO',c:'#e24b4a'};}
+  [['Liq. Corrente',EX.liq_corrente,'liq_corrente'],['Liq. Seca',EX.liq_seca,'liq_seca'],['Liq. Imediata',EX.liq_imediata,'liq_imediata'],['Liq. Geral',EX.liq_geral,'liq_geral']].forEach(function(item){
+    var nome=item[0],serie=item[1],key=item[2];
+    var h=document.createElement('div');
+    h.style.cssText='font-size:9px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;padding:7px 0 3px;border-bottom:1px solid #f0efe8;margin-bottom:4px';
+    h.textContent=nome;
+    el.appendChild(h);
+    serie.forEach(function(v,i){
+      var s=sem(v,key);
+      var row=document.createElement('div');
+      row.className='sbar';
+      row.innerHTML='<span class="sbar-lbl">'+AN4[i]+'</span><div class="sbar-bg"><div class="sbar-fill" style="width:'+Math.min(v/2*100,100)+'%;background:'+s.c+'"></div></div><span class="sbar-val" style="color:'+s.c+';min-width:130px">'+v.toFixed(3)+'\u00d7 \u2014 '+s.l+'</span>';
+      el.appendChild(row);
+    });
+  });
+})();
+
+// ── PARADOXO ──
+(function(){
+  var el=document.getElementById('cl_paradox');
+  if(!el)return;
+  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
+    {data:EX.caixa,       borderColor:'#1d9e75',borderWidth:2.5,fill:true,backgroundColor:'rgba(29,158,117,.07)',tension:.4,pointRadius:5,yAxisID:'y'},
+    {data:EX.liq_imediata,borderColor:'#e24b4a',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,yAxisID:'y2'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
+            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v+'bi';}},min:0,max:25},
+            y2:{position:'right',grid:{display:false},ticks:{color:'#e24b4a',font:{size:10},callback:function(v){return v.toFixed(2)+'\u00d7';}},min:0,max:1.2}}}});
+})();
+
+// ── ENDIVIDAMENTO KPIs ──
+document.getElementById('kv_eg').textContent = EX.end_geral[3].toFixed(1)+'%';
+document.getElementById('kv_eo').textContent = EX.end_oneroso[3].toFixed(1)+'%';
+document.getElementById('kv_de').textContent = EX.dl_ebitda[3].toFixed(2)+'\u00d7';
+document.getElementById('kv_ce').textContent = EX.cob_ebit[3].toFixed(3)+'\u00d7';
+document.getElementById('kv_cf').textContent = EX.cob_fco[3].toFixed(3)+'\u00d7';
+
+// ── END. GERAL ──
+(function(){
+  var el=document.getElementById('ce_geral');
+  if(!el)return;
+  new Chart(el,{type:'bar',data:{labels:AN4,datasets:[
+    {data:EX.end_geral,  backgroundColor:'rgba(226,75,74,.65)',borderRadius:3,barPercentage:.3,yAxisID:'y'},
+    {data:EX.end_oneroso,backgroundColor:'rgba(239,159,39,.65)',borderRadius:3,barPercentage:.3,yAxisID:'y'},
+    {data:EX.dl_ebitda,type:'line',borderColor:'#9b87f5',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,pointBackgroundColor:EX.dl_ebitda.map(function(v){return v>4.5?'#8b0000':v>2.5?'#e24b4a':'#9b87f5';}),yAxisID:'y2'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
+            y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v+'%';}},min:0,max:120},
+            y2:{position:'right',grid:{display:false},ticks:{color:'#9b87f5',font:{size:10},callback:function(v){return v.toFixed(1)+'\u00d7';}},min:0,max:7}}}});
+})();
+
+// ── COBERTURA JUROS ──
+(function(){
+  var el=document.getElementById('ce_cob');
+  if(!el)return;
+  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
+    {data:EX.cob_ebit,borderColor:'#9b87f5',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,pointBackgroundColor:EX.cob_ebit.map(function(v){return v<0?'#8b0000':v<1?'#e24b4a':v<2?'#ef9f27':'#9b87f5';})},
+    {data:EX.cob_fco, borderColor:'#1d9e75',borderWidth:2,fill:false,tension:.4,pointRadius:4,pointBackgroundColor:EX.cob_fco.map(function(v){return v<1?'#e24b4a':v<1.5?'#ef9f27':'#1d9e75';})},
+    {data:[1,1,1,1],borderColor:'rgba(226,75,74,.5)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
+    {data:[2,2,2,2],borderColor:'rgba(239,159,39,.3)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(2)+'\u00d7';}},min:-1.2,max:2.5}}}});
+})();
+
+// ── COMPOSIÇÃO CP/LP ──
+(function(){
+  var el=document.getElementById('ce_comp');
+  if(!el)return;
+  new Chart(el,{type:'bar',data:{labels:AN4,datasets:[
+    {data:EX.comp_end,                             backgroundColor:'rgba(226,75,74,.65)',borderRadius:3,barPercentage:.5,stack:'s'},
+    {data:EX.comp_end.map(function(v){return 100-v;}),backgroundColor:'rgba(29,158,117,.5)',borderRadius:3,barPercentage:.5,stack:'s'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{stacked:true,grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v+'%';}},min:0,max:100}}}});
+})();
+
+// ── TABELA ENDIVIDAMENTO ──
+(function(){
+  var el=document.getElementById('tbl_endiv');
+  if(!el)return;
+  el.innerHTML='<thead><tr><th>\u00cdndice</th>'+AN4.map(function(p){return'<th style="text-align:right">'+p+'</th>';}).join('')+'<th>Ref.</th></tr></thead>';
+  var tb=document.createElement('tbody');
+  [['End. Geral %',EX.end_geral,function(v){return v>50;},'<50%'],['Comp. CP %',EX.comp_end,function(v){return v>40;},'<40%'],['End. Oneroso %',EX.end_oneroso,function(v){return v>30;},'<30%'],['DL/EBITDA \u00d7',EX.dl_ebitda,function(v){return v>2.5;},'<2,5\u00d7'],['Cob. EBIT \u00d7',EX.cob_ebit,function(v){return v<2;},'\u003e2,0\u00d7'],['Cob. FCO \u00d7',EX.cob_fco,function(v){return v<1.5;},'\u003e1,5\u00d7'],['D\u00edvida L\u00edq. bi',EX.divida_liq,function(v){return v>20;},'<20bi']].forEach(function(row){
+    var n=row[0],d=row[1],isBad=row[2],ref=row[3];
+    var tr=document.createElement('tr');
+    var cells=d.map(function(v){var cls=isBad(v)?'nr':'ng';return'<td class="'+cls+'">'+(v>0?'+':'')+v.toFixed(2)+'</td>';});
+    tr.innerHTML='<td class="lbl">'+n+'</td>'+cells.join('')+'<td style="color:#aaa;font-size:10px">'+ref+'</td>';
+    tb.appendChild(tr);
+  });
+  el.appendChild(tb);
+})();
+
+// ── SOLVÊNCIA KPIs ──
+document.getElementById('kv_sg').textContent = EX.solv_geral[3].toFixed(3)+'\u00d7';
+document.getElementById('kv_pt').textContent = EX.idx_insolv[3].toFixed(3)+'\u00d7';
+document.getElementById('kv_ds').textContent = EX.dscr[3].toFixed(3)+'\u00d7';
+document.getElementById('kv_sc').textContent = EX.sust_capex[3].toFixed(3)+'\u00d7';
+document.getElementById('kv_ra').textContent = EX.roa[3].toFixed(2)+'%';
+
+// ── SOLVÊNCIA GERAL ──
+(function(){
+  var el=document.getElementById('cs_solv');
+  if(!el)return;
+  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
+    {data:EX.solv_geral,borderColor:'#1d9e75',borderWidth:2.5,fill:true,backgroundColor:'rgba(29,158,117,.07)',tension:.4,pointRadius:5,pointBackgroundColor:EX.solv_geral.map(function(v){return v<0.5?'#8b0000':v<0.7?'#e24b4a':'#1d9e75';})},
+    {data:EX.idx_insolv,borderColor:'#e24b4a',borderWidth:2.5,fill:true,backgroundColor:'rgba(226,75,74,.06)',tension:.4,pointRadius:5,pointBackgroundColor:EX.idx_insolv.map(function(v){return v>1?'#8b0000':'#e24b4a';})},
+    {data:[1,1,1,1],borderColor:'rgba(239,159,39,.7)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(2)+'\u00d7';}},min:0.3,max:1.2}}}});
+})();
+
+// ── DSCR ──
+(function(){
+  var el=document.getElementById('cs_dscr');
+  if(!el)return;
+  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
+    {data:EX.dscr,      borderColor:'#9b87f5',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,pointBackgroundColor:EX.dscr.map(function(v){return v<0.5?'#8b0000':v<1?'#e24b4a':v<1.2?'#ef9f27':'#9b87f5';})},
+    {data:EX.sust_capex,borderColor:'#ef9f27',borderWidth:2,fill:false,tension:.4,pointRadius:4},
+    {data:[1,1,1,1],borderColor:'rgba(226,75,74,.5)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
+    {data:[1.2,1.2,1.2,1.2],borderColor:'rgba(155,135,245,.35)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(2)+'\u00d7';}},min:0,max:1.5}}}});
+})();
+
+// ── PRAZO EXTINÇÃO ──
+(function(){
+  var el=document.getElementById('cs_prazo');
+  if(!el)return;
+  var data=EX.prazo_ext;
+  new Chart(el,{type:'bar',data:{labels:AN4,datasets:[{
+    data:data.map(function(v){return v||0;}),
+    backgroundColor:data.map(function(v){return v===null?'#aaa':v>5?'#e24b4a':v>2?'#ef9f27':'#1d9e75';}),
+    borderRadius:5,barPercentage:.55
+  }]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(1)+' a';}},min:0,max:11}}}});
+})();
+
+// ── ROA ──
+(function(){
+  var el=document.getElementById('cs_roa');
+  if(!el)return;
+  new Chart(el,{type:'line',data:{labels:AN4,datasets:[
+    {data:EX.roa,borderColor:'#1d9e75',borderWidth:2.5,fill:false,tension:.4,pointRadius:5,pointBackgroundColor:EX.roa.map(function(v){return v<0?'#e24b4a':'#1d9e75';})},
+    {data:[0,0,0,0],borderColor:'rgba(226,75,74,.4)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#aaa',font:{size:10},callback:function(v){return v.toFixed(1)+'%';}}}}});
+})();
+
 </script>
 </body>
 </html>
